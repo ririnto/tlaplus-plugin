@@ -1,0 +1,17 @@
+{
+  "name": "tlaplus-plugin",
+  "version": "1.7.4",
+  "description": "TLA+ SANY and TLC tools over stdio MCP with official AgentSkills.",
+  "author": {
+    "name": "ririnto"
+  },
+  "license": "MIT",
+  "skills": "./skills/",
+  "mcpServers": {
+    "tlaplus": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/server.mjs"]
+    }
+  }
+}

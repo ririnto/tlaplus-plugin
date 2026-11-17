@@ -1,0 +1,14 @@
+{
+  "extends": "@tsconfig/node-lts/tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true
+  },
+  "include": [
+    "src/**/*.mts",
+    "tests/**/*.mts",
+    "*.config.ts",
+    "scripts/**/*.mts"
+  ]
+}
