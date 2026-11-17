@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { behaviorPrefix, readBehavior } from "./behavior.mts";
+
 export const jarPath = fileURLToPath(
   new URL("../vendor/tla2tools.jar", import.meta.url)
 );
@@ -29,6 +31,8 @@ export interface Execution {
   stderr: string;
   truncated: boolean;
   failed: boolean;
+  behavior?: string;
+  behaviorError?: string;
 }
 
 export const javaArguments = (
@@ -48,7 +52,21 @@ export const javaArguments = (
   ) {
     throw new Error("behaviorLength must be a positive integer");
   }
-  const prefix = [...(input.extraJavaOpts ?? []), "-cp", jarPath];
+  if (name === "tlaplus_mcp_tlc_explore") {
+    const reserved =
+      /^(?<option>--?(?:simulate|modelcheck|workers|depth|metadir|cleanup|recover|help|h))(?:=|$)/u;
+    for (const option of input.extraOpts ?? []) {
+      if (reserved.test(option)) {
+        throw new Error(`Explore owns this option: ${option}`);
+      }
+    }
+  }
+  const prefix = [
+    ...(input.extraJavaOpts ?? []),
+    `-Djava.io.tmpdir=${metadataDirectory}`,
+    "-cp",
+    jarPath
+  ];
   if (name === "tlaplus_mcp_sany_parse") {
     return [...prefix, "tla2sany.SANY", input.fileName];
   }
@@ -59,7 +77,9 @@ export const javaArguments = (
   if (name === "tlaplus_mcp_tlc_smoke" || name === "tlaplus_mcp_tlc_explore") {
     options.push(
       "-simulate",
-      "num=1",
+      name === "tlaplus_mcp_tlc_explore"
+        ? `num=1,file=${behaviorPrefix(metadataDirectory)}`
+        : "num=1",
       "-depth",
       String(input.behaviorLength ?? 100)
     );
@@ -166,11 +186,29 @@ export const runTool = async (
   );
   try {
     const args = javaArguments(name, input, metadataDirectory);
-    return await executeJava(
+    const execution = await executeJava(
       args,
       path.dirname(input.fileName),
       AbortSignal.any([signal, AbortSignal.timeout(120_000)])
     );
+    if (name === "tlaplus_mcp_tlc_explore" && !execution.failed) {
+      try {
+        if (execution.truncated) {
+          throw new Error("Explore output exceeds the response limit");
+        }
+        const behavior = await readBehavior(metadataDirectory);
+        signal.throwIfAborted();
+        return { ...execution, behavior };
+      } catch (error) {
+        signal.throwIfAborted();
+        return {
+          ...execution,
+          failed: true,
+          behaviorError: error instanceof Error ? error.message : String(error)
+        };
+      }
+    }
+    return execution;
   } finally {
     await rm(metadataDirectory, { recursive: true, force: true });
   }

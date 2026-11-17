@@ -16,7 +16,7 @@ Real-jar integration, dependency installation, full lint/type checks, and packag
 | `tlaplus_mcp_sany_parse` | Syntax and semantic analysis |
 | `tlaplus_mcp_tlc_check` | Exhaustive TLC model checking |
 | `tlaplus_mcp_tlc_smoke` | One random simulation trace, 100 steps by default |
-| `tlaplus_mcp_tlc_explore` | One random simulation trace with `behaviorLength` steps |
+| `tlaplus_mcp_tlc_explore` | One random behavior containing up to `behaviorLength` states |
 
 Every tool requires an absolute `fileName`.
 The TLC tools accept an optional absolute `cfgFile`, `extraOpts` and `extraJavaOpts`.
@@ -28,7 +28,14 @@ Results report process exit code, signal, stdout, stderr, failure and truncation
 SANY diagnostics are checked as well as its process status.
 Each request has a two-minute deadline and supports MCP cancellation.
 Output is limited to two million characters per stream.
-Temporary TLC metadata is removed after each call.
+Explore includes a `behavior` string containing TLC's ordered `STATE_1`, `STATE_2`, … definitions and variable values, including the initial state.
+This is a simulation artifact, not a counterexample or an exhaustive proof.
+Its maximum size is 2 MiB; missing or oversized artifacts produce `failed: true` and a `behaviorError` while retaining the actual process exit code and diagnostics.
+A failed TLC run is never converted into a successful exploration.
+Explore reserves `-simulate`, `-modelcheck`, `-workers`, `-depth`, `-metadir`, `-cleanup`, `-recover`, and help options; use `behaviorLength` instead of overriding its depth.
+Other options, such as `-seed`, remain available. Smoke and check option handling is unchanged.
+Each Java process has a private temporary directory, including extracted standard modules.
+Temporary TLC metadata and behavior files are removed after each call, including cancellation.
 Additional TLC options can change output behavior and write files; the server is not a sandbox.
 
 ## Build and validate
