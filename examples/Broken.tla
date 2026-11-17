@@ -1,0 +1,3 @@
+---- MODULE Broken ----
+VARIABLE
+====

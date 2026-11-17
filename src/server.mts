@@ -1,0 +1,74 @@
+#!/usr/bin/env node
+import path from "node:path";
+
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type {
+  CallToolResult,
+  ServerNotification,
+  ServerRequest
+} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+
+import { runTool, toolNames } from "./runner.mts";
+import type { ToolInput } from "./runner.mts";
+
+const server = new McpServer({ name: "tlaplus-plugin", version: "1.7.4" });
+const fileName = z
+  .string()
+  .refine((value) => path.isAbsolute(value), "Must be an absolute path");
+const tlcSchema = {
+  fileName,
+  cfgFile: fileName.optional(),
+  extraOpts: z.array(z.string()).optional(),
+  extraJavaOpts: z.array(z.string()).optional()
+};
+const descriptions = {
+  tlaplus_mcp_sany_parse:
+    "Parse and semantically analyze a TLA+ module with SANY.",
+  tlaplus_mcp_tlc_check: "Model-check a TLA+ module with TLC.",
+  tlaplus_mcp_tlc_smoke:
+    "Run one bounded random TLC simulation trace (100 steps by default).",
+  tlaplus_mcp_tlc_explore:
+    "Explore one bounded random TLC behavior of the requested length."
+};
+const schemas = {
+  tlaplus_mcp_sany_parse: { fileName },
+  tlaplus_mcp_tlc_check: tlcSchema,
+  tlaplus_mcp_tlc_smoke: tlcSchema,
+  tlaplus_mcp_tlc_explore: {
+    ...tlcSchema,
+    behaviorLength: z.number().int().positive().optional()
+  }
+};
+for (const name of toolNames) {
+  const inputSchema = schemas[name];
+  server.registerTool(
+    name,
+    { description: descriptions[name], inputSchema },
+    async (
+      input: ToolInput,
+      extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+    ): Promise<CallToolResult> => {
+      try {
+        const result = await runTool(name, input, extra.signal);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          isError: result.failed
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: error instanceof Error ? error.message : String(error)
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+}
+await server.connect(new StdioServerTransport());
