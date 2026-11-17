@@ -31,7 +31,7 @@ const descriptions = {
   tlaplus_mcp_tlc_smoke:
     "Run one bounded random TLC simulation trace (100 steps by default).",
   tlaplus_mcp_tlc_explore:
-    "Explore one bounded random TLC behavior of the requested length."
+    "Return one bounded random TLC behavior with ordered states and variable values, including the initial state."
 };
 const schemas = {
   tlaplus_mcp_sany_parse: { fileName },
