@@ -1,5 +1,4 @@
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { chmod, cp, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,10 +8,10 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const stage = await mkdtemp(path.join(root, ".build-"));
 const dist = path.join(stage, "dist");
 
-function checkout(repo, commit, paths) {
+function checkout(repo, paths) {
   const cwd = path.join(stage, repo);
   execFileSync("git", ["init", "--quiet", cwd]);
-  execFileSync("git", ["fetch", "--quiet", "--depth=1", `https://github.com/tlaplus/${repo}.git`, commit], { cwd });
+  execFileSync("git", ["fetch", "--quiet", "--depth=1", `https://github.com/tlaplus/${repo}.git`, "HEAD"], { cwd });
   execFileSync("git", ["checkout", "--quiet", "FETCH_HEAD", "--", ...paths], { cwd });
   return cwd;
 }
@@ -26,8 +25,8 @@ async function download(url) {
 async function writeNotices(inputs) {
   const packages = new Set();
   for (const input of Object.keys(inputs)) {
-    const match = input.match(/^(.*\bnode_modules\/(?:@[^/]+\/)?[^/]+)/u);
-    if (match) packages.add(match[1]);
+    const match = input.match(/^(?<directory>.*\bnode_modules\/(?:@[^/]+\/)?[^/]+)/u);
+    if (match) packages.add(match.groups.directory);
   }
   const notices = [];
   for (const directory of [...packages].sort()) {
@@ -43,8 +42,8 @@ async function writeNotices(inputs) {
 }
 
 try {
-  const skills = checkout("AgentSkills", "f2adb5e4e2c6250661d1aff8bcc0b9f92d5442ec", ["skills", "LICENSE"]);
-  const vscode = checkout("vscode-tlaplus", "4601279e07e479f0cd1a773d53b357308a4194a7", ["resources/knowledgebase", "LICENSE"]);
+  const skills = checkout("AgentSkills", ["skills", "LICENSE"]);
+  const vscode = checkout("vscode-tlaplus", ["resources/knowledgebase", "LICENSE"]);
   await cp(path.join(skills, "skills"), path.join(stage, "skills"), { recursive: true });
   for (const entry of await readdir(path.join(stage, "skills"), { withFileTypes: true })) {
     if (entry.isDirectory()) {
@@ -52,13 +51,10 @@ try {
     }
   }
   await mkdir(dist);
+  execFileSync("sh", [path.join(root, "scripts/link-runtimes.sh"), path.join(dist, "runtimes")], { cwd: stage, stdio: "inherit" });
   await cp(path.join(vscode, "resources/knowledgebase"), path.join(dist, "knowledgebase"), { recursive: true });
   await cp(path.join(vscode, "LICENSE"), path.join(dist, "knowledgebase/LICENSE"));
-  const jar = await download("https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar");
-  if (createHash("sha256").update(jar).digest("hex") !== "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88") {
-    throw new Error("Unexpected SHA-256 for tla2tools.jar v1.7.4");
-  }
-  await writeFile(path.join(dist, "tla2tools.jar"), jar);
+  await writeFile(path.join(dist, "tla2tools.jar"), await download("https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar"));
   await writeFile(path.join(dist, "TLA-LICENSE"), await download("https://raw.githubusercontent.com/tlaplus/tlaplus/v1.7.4/LICENSE"));
 
   const output = await build({

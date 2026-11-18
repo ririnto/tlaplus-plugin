@@ -1,13 +1,13 @@
 # TLA+ plugin
 
-Run SANY and TLC from an MCP client without opening an editor. The npm package includes the stdio server, the official TLA+ tools JAR, three modeling skills, and the TLA+ knowledge base from the VS Code extension.
+Run SANY and TLC from an MCP client without opening an editor. The npm package includes the stdio server, the official TLA+ tools JAR, GraalVM Community runtimes, three modeling skills, and the TLA+ knowledge base from the VS Code extension.
 
 ## Use the package
 
-Install Node.js 24 or later and put Java 11 or later on PATH. Install the release tarball in your project, then start the server with `npm exec -- tlaplus-plugin`. After registry publication, the package name is `@ririnto/tlaplus-plugin`.
+Install Node.js 24 or later. Linux x64 and arm64 (glibc), macOS on Apple silicon, and Windows x64 use the bundled runtime. Other platforms can use Java 11 or later on PATH. Install the release tarball in your project, then start the server with `npm exec -- tlaplus-plugin`. After registry publication, the package name is `@ririnto/tlaplus-plugin`.
 
 ```sh
-npm install /path/to/ririnto-tlaplus-plugin-2026.11.19+01.tgz
+npm install /path/to/ririnto-tlaplus-plugin-2026.11.19+02.tgz
 npm exec -- tlaplus-plugin
 ```
 
@@ -38,16 +38,16 @@ The bundled skills cover adding a variable, splitting an action, and deriving a 
 
 ## Build a release
 
-Run these commands from a checkout with Git, Node.js, npm, and Java on PATH:
+Build the universal tarball on Linux x64 with Git, Node.js 24+, npm, curl, jq, GNU tar, and unzip.
 
 ```sh
-npm ci
+npm install
 npm pack
 npm test
 ```
 
-The prepack step builds the server, copies the skills and articles from pinned upstream revisions, and verifies the SHA-256 of the TLA+ 1.7.4 JAR. The tarball carries their licenses and the JavaScript dependency notices. Build-time downloads require network access. The installed package can run offline.
+The build fetches the default branches of AgentSkills and vscode-tlaplus, downloads the TLA+ 1.7.4 release JAR, and resolves the latest stable GraalVM Community release once per build. GitHub Actions installs its Linux JDK with the official GraalVM setup action. Its `jlink` builds all four runtimes from that release’s platform-specific JDK modules. The tarball includes the upstream licenses and JavaScript dependency notices. Once installed, the tools and knowledge base work offline.
 
 Native plugin manifests use `yyyy.MM.dd.seq`. The npm package uses the SemVer form `yyyy.MM.dd+seq`. npm compares versions without build metadata, so changing only `seq` does not give a second publishable registry version for the same date.
 
-[AgentSkills source](https://github.com/tlaplus/AgentSkills/tree/f2adb5e4e2c6250661d1aff8bcc0b9f92d5442ec/skills) · [VS Code knowledge base](https://github.com/tlaplus/vscode-tlaplus/tree/4601279e07e479f0cd1a773d53b357308a4194a7/resources/knowledgebase) · [TLA+ tools release](https://github.com/tlaplus/tlaplus/releases/tag/v1.7.4)
+[AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [GraalVM Community](https://github.com/graalvm/graalvm-ce-builds) · [GraalVM setup action](https://github.com/graalvm/setup-graalvm)

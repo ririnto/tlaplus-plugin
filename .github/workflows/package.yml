@@ -1,0 +1,59 @@
+name: Test release package
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  pack:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Resolve latest GraalVM Community release
+        id: graalvm
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/graalvm/graalvm-ce-builds/releases/latest > "$RUNNER_TEMP/graalvm.json"
+          jq -er '.tag_name | sub("^(graal|jdk)-"; "") | "version=\(.)"' "$RUNNER_TEMP/graalvm.json" >> "$GITHUB_OUTPUT"
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          distribution: graalvm-community
+          version: ${{ steps.graalvm.outputs.version }}
+      - run: npm install
+      - run: npm pack
+        env:
+          GRAALVM_RELEASE_FILE: ${{ runner.temp }}/graalvm.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-package
+          path: '*.tgz'
+          compression-level: 0
+          retention-days: 3
+
+  test:
+    needs: pack
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - macos-15
+          - windows-2025
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: npm-package
+      - run: npm install
+      - shell: bash
+        run: tar -xf ./*.tgz --strip-components=1 package/dist
+      - run: npm test

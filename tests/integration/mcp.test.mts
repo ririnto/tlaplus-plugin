@@ -37,7 +37,8 @@ const cfgFile = fileURLToPath(new URL("examples/Counter.cfg", root));
 await test("all four MCP tools execute the real jar, with positive and negative SANY", async () => {
   const client = new Client({ name: "tlaplus-integration", version: "1.0.0" });
   const transport = new StdioClientTransport({
-    command: "node",
+    command: process.execPath,
+    env: { PATH: "" },
     args: [fileURLToPath(new URL("dist/server.mjs", root))]
   });
   try {
@@ -62,7 +63,7 @@ await test("all four MCP tools execute the real jar, with positive and negative 
       },
       {
         name: "tlaplus_mcp_tlc_check",
-        args: { fileName, cfgFile },
+        args: { fileName, cfgFile, extraJavaOpts: ["-Xmx256m"] },
         expected: /states generated/u
       },
       {
