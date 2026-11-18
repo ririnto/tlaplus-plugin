@@ -38,7 +38,7 @@ The bundled skills cover adding a variable, splitting an action, and deriving a 
 
 ## Build a release
 
-Build the universal tarball on Linux x64 with Git, Node.js 24+, npm, curl, GNU tar, and unzip.
+Build the universal tarball on Linux x64 with Git, Node.js 24+, npm, curl, jq, GNU tar, and unzip.
 
 ```sh
 npm install
@@ -46,8 +46,8 @@ npm pack
 npm test
 ```
 
-The build fetches the default branches of AgentSkills and vscode-tlaplus, downloads the TLA+ 1.7.4 release JAR, and uses GraalVM Community’s `jlink` to build a runtime for each platform. The tarball includes the upstream licenses and JavaScript dependency notices. Once installed, the tools and knowledge base work offline.
+The build fetches the default branches of AgentSkills and vscode-tlaplus, downloads the TLA+ 1.7.4 release JAR, and resolves the latest stable GraalVM Community release once per build. GitHub Actions installs its Linux JDK with the official GraalVM setup action. Its `jlink` builds all four runtimes from that release’s platform-specific JDK modules. The tarball includes the upstream licenses and JavaScript dependency notices. Once installed, the tools and knowledge base work offline.
 
 Native plugin manifests use `yyyy.MM.dd.seq`. The npm package uses the SemVer form `yyyy.MM.dd+seq`. npm compares versions without build metadata, so changing only `seq` does not give a second publishable registry version for the same date.
 
-[AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [GraalVM Community](https://github.com/graalvm/graalvm-ce-builds)
+[AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [GraalVM Community](https://github.com/graalvm/graalvm-ce-builds) · [GraalVM setup action](https://github.com/graalvm/setup-graalvm)

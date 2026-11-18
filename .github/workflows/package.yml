@@ -12,8 +12,21 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - name: Resolve latest GraalVM Community release
+        id: graalvm
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/graalvm/graalvm-ce-builds/releases/latest > "$RUNNER_TEMP/graalvm.json"
+          jq -er '.tag_name | sub("^(graal|jdk)-"; "") | "version=\(.)"' "$RUNNER_TEMP/graalvm.json" >> "$GITHUB_OUTPUT"
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          distribution: graalvm-community
+          version: ${{ steps.graalvm.outputs.version }}
       - run: npm install
       - run: npm pack
+        env:
+          GRAALVM_RELEASE_FILE: ${{ runner.temp }}/graalvm.json
       - uses: actions/upload-artifact@v7
         with:
           name: npm-package
