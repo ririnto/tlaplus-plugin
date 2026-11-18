@@ -1,6 +1,5 @@
 node_modules/
 dist/
-vendor/
 skills/
+.build-*/
 *.tgz
-.assets-*/

@@ -1,131 +1,53 @@
 # TLA+ plugin
 
-A Node 24 stdio MCP server for SANY and TLC, packaged with official TLA+ AgentSkills.
-Java must be available on `PATH`.
-Only run specifications and JVM options you trust: this server executes local Java processes with your account's permissions.
+Run SANY and TLC from an MCP client without opening an editor. The npm package includes the stdio server, the official TLA+ tools JAR, three modeling skills, and the TLA+ knowledge base from the VS Code extension.
 
-## Status
+## Use the package
 
-Initial implementation candidate, not yet published.
-Real-jar integration, dependency installation, full lint/type checks, and package contents must pass before publication.
+Install Node.js 24 or later and put Java 11 or later on PATH. Install the release tarball in your project, then start the server with `npm exec -- tlaplus-plugin`. After registry publication, the package name is `@ririnto/tlaplus-plugin`.
 
-## Tools
+```sh
+npm install /path/to/ririnto-tlaplus-plugin-2026.11.19+01.tgz
+npm exec -- tlaplus-plugin
+```
 
-| Tool | Purpose |
+For a general MCP client, set `command` to `node` and pass the absolute path to `node_modules/@ririnto/tlaplus-plugin/dist/server.mjs` as its only argument. The server communicates over stdio and uses the JAR shipped with the package. Only run trusted specifications and JVM options.
+
+Claude Code, Codex, and Cursor manifests are included. Point your host at the installed package directory or the extracted tarball. For example, from the npm project:
+
+```sh
+claude --plugin-dir ./node_modules/@ririnto/tlaplus-plugin
+codex plugin marketplace add ./node_modules/@ririnto/tlaplus-plugin
+codex plugin add tlaplus-plugin@tlaplus-plugin
+```
+
+For Cursor, extract the tarball's `package/` contents into `~/.cursor/plugins/local/tlaplus-plugin/` and reload the window. If you use a Git checkout directly, build it first.
+
+## Tools and references
+
+| MCP tool | Operation |
 | --- | --- |
-| `tlaplus_mcp_sany_parse` | Syntax and semantic analysis |
-| `tlaplus_mcp_tlc_check` | Exhaustive TLC model checking |
-| `tlaplus_mcp_tlc_smoke` | One random simulation trace, 100 steps by default |
-| `tlaplus_mcp_tlc_explore` | One random behavior containing up to `behaviorLength` states |
+| `tlaplus_mcp_sany_parse` | Parse a module and check its semantics. |
+| `tlaplus_mcp_tlc_check` | Exhaustively check a model and its configured properties. |
+| `tlaplus_mcp_tlc_smoke` | Run one bounded random simulation. |
+| `tlaplus_mcp_tlc_explore` | Return one bounded behavior, including its initial state and ordered variable values. |
 
-Every tool requires an absolute `fileName`.
-The TLC tools accept an optional absolute `cfgFile`, `extraOpts` and `extraJavaOpts`.
-The option fields are arrays of individual arguments, not shell command strings.
-`behaviorLength` is an optional positive integer, defaulting to 100.
-Tool names and parameter names follow the draft `tlaplus/tlaplus#1296` Java prototype; no dependency on that unmerged implementation is required.
+Pass an absolute `fileName`. TLC tools also accept an absolute `cfgFile`, plus `extraOpts` and `extraJavaOpts` as arrays of individual arguments. Explore accepts a positive `behaviorLength` and defaults to 100. Requests support cancellation and have a two-minute Java execution limit. Results include process status, diagnostics and truncation information.
 
-Results report process exit code, signal, stdout, stderr, failure and truncation status.
-SANY diagnostics are checked as well as its process status.
-Each request has a two-minute deadline and supports MCP cancellation.
-Output is limited to two million characters per stream.
-Explore includes a `behavior` string containing TLC's ordered `STATE_1`, `STATE_2`, … definitions and variable values, including the initial state.
-This is a simulation artifact, not a counterexample or an exhaustive proof.
-Its maximum size is 2 MiB; missing or oversized artifacts produce `failed: true` and a `behaviorError` while retaining the actual process exit code and diagnostics.
-A failed TLC run is never converted into a successful exploration.
-Explore reserves `-simulate`, `-modelcheck`, `-workers`, `-depth`, `-metadir`, `-cleanup`, `-recover`, and help options; use `behaviorLength` instead of overriding its depth.
-Other options, such as `-seed`, remain available. Smoke and check option handling is unchanged.
-Each Java process has a private temporary directory, including extracted standard modules.
-Temporary TLC metadata and behavior files are removed after each call, including cancellation.
-Additional TLC options can change output behavior and write files; the server is not a sandbox.
+The bundled skills cover adding a variable, splitting an action, and deriving a specification from source code. MCP clients can list and read the bundled Markdown articles at `tlaplus://knowledge/<filename>`, for example `tlaplus://knowledge/tlc-config-files.md`.
 
-## Build and validate
+## Build a release
+
+Run these commands from a checkout with Git, Node.js, npm, and Java on PATH:
 
 ```sh
-pnpm install
-pnpm build
-pnpm check
-pnpm check:integration
-pnpm check:pack
-pnpm check:consumer
+npm ci
+npm pack
+npm test
 ```
 
-`pnpm build` compiles `.mts` sources to executable `dist/*.mjs` and downloads packaging assets.
-`pnpm pack` invokes the same build through `prepack` and resolves catalog versions into the package manifest.
-Do not publish the source manifest directly with npm; publish the verified tarball.
-No downloads occur at server startup.
-`pnpm check:pack` creates the tarball with pnpm, rejects unresolved catalog/workspace dependency protocols, and runs `npm pack <tarball> --dry-run --json` to verify its files.
-`pnpm check:consumer` installs that tarball with npm in an isolated temporary project and verifies MCP startup, tool discovery, and SANY with production dependencies only.
-The integration suite uses the MCP stdio client to invoke all four tools, including successful and failing SANY examples.
+The prepack step builds the server, copies the skills and articles from pinned upstream revisions, and verifies the SHA-256 of the TLA+ 1.7.4 JAR. The tarball carries their licenses and the JavaScript dependency notices. Build-time downloads require network access. The installed package can run offline.
 
-The build downloads `tla2tools.jar` from TLA+ release v1.7.4, verifies the published SHA1 `bee4a54f3ee3d4afc347c3240ec2d9e93b075104`, and executes a SANY semantic-analysis probe to verify `tla2sany.SANY`.
-It downloads the `tlaplus/AgentSkills` main archive and copies these skills unchanged with a separate upstream MIT LICENSE in each directory:
+Native plugin manifests use `yyyy.MM.dd.seq`. The npm package uses the SemVer form `yyyy.MM.dd+seq`. npm compares versions without build metadata, so changing only `seq` does not give a second publishable registry version for the same date.
 
-- `tlaplus-add-variable`
-- `tlaplus-split-action`
-- `tlaplus-from-source`
-
-`vendor/`, `skills/`, and `dist/` are ignored by Git but included in the npm package.
-The package includes this project's MIT LICENSE, the TLA+ MIT license under `vendor/`, and the AgentSkills MIT license in every copied skill.
-Failed downloads or checksum/probe failures abort the build.
-
-## General MCP clients
-
-After publication:
-
-```json
-{
-  "mcpServers": {
-    "tlaplus": {
-      "command": "npx",
-      "args": ["--yes", "@ririnto/tlaplus-plugin@1.7.4"]
-    }
-  }
-}
-```
-
-For a local built checkout, use `node` with the absolute path to `dist/server.mjs` instead.
-
-## Codex
-
-```toml
-[mcp_servers.tlaplus]
-command = "npx"
-args = ["--yes", "@ririnto/tlaplus-plugin@1.7.4"]
-```
-
-## Claude Code
-
-Build the checkout before loading it:
-
-```sh
-pnpm install
-pnpm build
-claude --plugin-dir /absolute/path/to/tlaplus-plugin
-```
-
-The plugin manifest loads `skills/` and starts `dist/server.mjs` through stdio.
-A raw Git checkout does not contain the downloaded skills or jar until built.
-The npm tarball includes them; extract it, install its runtime dependencies, and point `--plugin-dir` at its `package/` directory:
-
-```sh
-npm install --omit=dev --ignore-scripts --prefix /absolute/path/to/package
-claude --plugin-dir /absolute/path/to/package
-```
-
-## Versioning
-
-The initial npm version and `package.json`'s `tla2tools` field are `1.7.4`.
-Package-only revisions increment PATCH (`1.7.5`, `1.7.6`, and so on) while retaining the jar version field.
-When upgrading the jar, align the package version with the new jar version.
-A four-component `1.7.4.x` version is not npm semver.
-
-## Publishing
-
-Keep the GitHub repository private during preparation.
-Review the PR and validation evidence, approve publication, then make the repository public and publish:
-
-```sh
-npm publish ./ririnto-tlaplus-plugin-1.7.4.tgz --access public
-```
-
-Publication is a separate approved step; no script publishes automatically.
+[AgentSkills source](https://github.com/tlaplus/AgentSkills/tree/f2adb5e4e2c6250661d1aff8bcc0b9f92d5442ec/skills) · [VS Code knowledge base](https://github.com/tlaplus/vscode-tlaplus/tree/4601279e07e479f0cd1a773d53b357308a4194a7/resources/knowledgebase) · [TLA+ tools release](https://github.com/tlaplus/tlaplus/releases/tag/v1.7.4)

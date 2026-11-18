@@ -1,0 +1,13 @@
+{
+  "name": "tlaplus-plugin",
+  "owner": {
+    "name": "ririnto"
+  },
+  "plugins": [
+    {
+      "name": "tlaplus-plugin",
+      "source": "./",
+      "description": "Parse TLA+ specifications, check models with TLC, and read TLA+ modeling guidance."
+    }
+  ]
+}

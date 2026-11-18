@@ -1,14 +1,18 @@
 {
-  "extends": "@tsconfig/node-lts/tsconfig.json",
   "compilerOptions": {
-    "allowImportingTsExtensions": true,
+    "target": "ES2024",
+    "module": "NodeNext",
+    "types": [
+      "node"
+    ],
+    "strict": true,
     "noEmit": true,
-    "strict": true
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*.mts",
-    "tests/**/*.mts",
-    "*.config.ts",
-    "scripts/**/*.mts"
+    "tests/**/*.mts"
   ]
 }

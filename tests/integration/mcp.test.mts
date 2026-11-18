@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -41,6 +42,16 @@ await test("all four MCP tools execute the real jar, with positive and negative 
   });
   try {
     await client.connect(transport);
+    const article = "tlc-config-files.md";
+    const uri = `tlaplus://knowledge/${article}`;
+    const catalog = await client.listResources();
+    assert.ok(catalog.resources.some(resource => resource.uri === uri));
+    const { contents } = await client.readResource({ uri });
+    assert.deepEqual(contents, [{
+      uri,
+      mimeType: "text/markdown",
+      text: await readFile(new URL(`dist/knowledgebase/${article}`, root), "utf8")
+    }]);
     const listed = await client.listTools();
     assert.equal(listed.tools.length, 4);
     const cases = [
