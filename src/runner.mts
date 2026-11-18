@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { behaviorPrefix, readBehavior } from "./behavior.mts";
 
 export const jarPath = fileURLToPath(
-  new URL("../vendor/tla2tools.jar", import.meta.url)
+  new URL("../dist/tla2tools.jar", import.meta.url)
 );
 export const toolNames = [
   "tlaplus_mcp_sany_parse",

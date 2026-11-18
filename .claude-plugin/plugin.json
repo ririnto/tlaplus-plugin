@@ -1,7 +1,7 @@
 {
   "name": "tlaplus-plugin",
-  "version": "1.7.4",
-  "description": "TLA+ SANY and TLC tools over stdio MCP with official AgentSkills.",
+  "version": "2026.11.19.01",
+  "description": "Parse TLA+ specifications, check models with TLC, and read TLA+ modeling guidance.",
   "author": {
     "name": "ririnto"
   },
@@ -11,7 +11,9 @@
     "tlaplus": {
       "type": "stdio",
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/server.mjs"]
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/dist/server.mjs"
+      ]
     }
   }
 }

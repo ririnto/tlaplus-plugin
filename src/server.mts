@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -14,7 +15,9 @@ import { z } from "zod";
 import { runTool, toolNames } from "./runner.mts";
 import type { ToolInput } from "./runner.mts";
 
-const server = new McpServer({ name: "tlaplus-plugin", version: "1.7.4" });
+import pkg from "../package.json" with { type: "json" };
+
+const server = new McpServer({ name: "tlaplus-plugin", version: pkg.version });
 const fileName = z
   .string()
   .refine((value) => path.isAbsolute(value), "Must be an absolute path");
@@ -71,4 +74,15 @@ for (const name of toolNames) {
     }
   );
 }
+const knowledge = new URL("./knowledgebase/", import.meta.url);
+for (const file of await readdir(knowledge, { withFileTypes: true })) {
+  if (file.isFile() && file.name.endsWith(".md")) {
+    const uri = `tlaplus://knowledge/${file.name}`;
+    const source = new URL(file.name, knowledge);
+    server.registerResource(file.name, uri, { mimeType: "text/markdown" }, async () => ({
+      contents: [{ uri, mimeType: "text/markdown", text: await readFile(source, "utf8") }]
+    }));
+  }
+}
+
 await server.connect(new StdioServerTransport());
