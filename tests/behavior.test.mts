@@ -67,7 +67,7 @@ await test("explore reserves trace ownership options, including equals variants"
     },
     "/tmp/meta"
   );
-  assert.ok(args.includes("num=1,file=/tmp/meta/behavior"));
+  assert.ok(args.includes(`num=1,file=${behaviorPrefix("/tmp/meta")}`));
   assert.ok(args.includes("123"));
   assert.doesNotThrow(() =>
     javaArguments(

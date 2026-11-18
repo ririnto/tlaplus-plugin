@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import { existsSync } from "node:fs";
 import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -10,6 +11,17 @@ import { behaviorPrefix, readBehavior } from "./behavior.mts";
 export const jarPath = fileURLToPath(
   new URL("../dist/tla2tools.jar", import.meta.url)
 );
+const bundledJava = path.join(
+  path.dirname(jarPath),
+  "runtimes",
+  `${process.platform}-${process.arch}`,
+  "bin",
+  process.platform === "win32" ? "java.exe" : "java"
+);
+const java = existsSync(bundledJava) && (
+  process.platform !== "linux" ||
+  (process.report.getReport() as { header: { glibcVersionRuntime?: string } }).header.glibcVersionRuntime
+) ? bundledJava : "java";
 export const toolNames = [
   "tlaplus_mcp_sany_parse",
   "tlaplus_mcp_tlc_check",
@@ -100,7 +112,7 @@ export const executeJava = async (
 ): Promise<Execution> => {
   signal.throwIfAborted();
 
-  const child = spawn("java", args, {
+  const child = spawn(java, args, {
     cwd,
     shell: false,
     stdio: ["ignore", "pipe", "pipe"]

@@ -55,7 +55,7 @@ NeverTwo == x # 2
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [fileURLToPath(new URL("../../dist/server.mjs", import.meta.url))],
-    env: { ...getDefaultEnvironment(), TMPDIR: runtime }
+    env: { ...getDefaultEnvironment(), TMPDIR: runtime, TEMP: runtime, TMP: runtime }
   });
   try {
     await client.connect(transport);

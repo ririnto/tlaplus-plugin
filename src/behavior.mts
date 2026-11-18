@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { open } from "node:fs/promises";
+import { lstat, open } from "node:fs/promises";
 import path from "node:path";
 
 export const behaviorLimit = 2 * 1024 * 1024;
@@ -7,13 +7,18 @@ export const behaviorPrefix = (directory: string): string =>
   path.join(directory, "behavior");
 
 export const readBehavior = async (directory: string): Promise<string> => {
-  const file = await open(
-    `${behaviorPrefix(directory)}_0_0`,
-    constants.O_RDONLY + constants.O_NOFOLLOW + constants.O_NONBLOCK
-  );
+  const trace = `${behaviorPrefix(directory)}_0_0`;
+  const before = await lstat(trace, { bigint: true });
+  if (!before.isFile()) {
+    throw new Error("Behavior must be a regular file");
+  }
+  const file = await open(trace, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
-    const stat = await file.stat();
-    if (!stat.isFile() || stat.size === 0 || stat.size > behaviorLimit) {
+    const stat = await file.stat({ bigint: true });
+    if (before.dev !== stat.dev || before.ino !== stat.ino) {
+      throw new Error("Behavior changed while opening the file");
+    }
+    if (!stat.isFile() || stat.size === 0n || stat.size > behaviorLimit) {
       throw new Error(
         "Behavior must be a nonempty regular file of at most 2 MiB"
       );

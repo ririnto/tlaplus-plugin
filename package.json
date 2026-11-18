@@ -1,6 +1,6 @@
 {
   "name": "@ririnto/tlaplus-plugin",
-  "version": "2026.11.19+01",
+  "version": "2026.11.19+02",
   "description": "Parse TLA+ specifications, check models with TLC, and read TLA+ modeling guidance.",
   "license": "MIT",
   "author": "ririnto",
