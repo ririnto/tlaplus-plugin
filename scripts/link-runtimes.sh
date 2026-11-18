@@ -11,7 +11,7 @@ if [ -z "${GRAALVM_RELEASE_FILE:-}" ]; then
 fi
 release=${GRAALVM_RELEASE_FILE:-graalvm.json}
 version=$(jq -er '.tag_name | sub("^(graal|jdk)-"; "")' "$release")
-echo "Building runtimes with GraalVM Community $version"
+echo "Building runtimes with GraalVM Community $version" >&2
 mkdir -p "$1"
 
 for platform in linux-x64 linux-arm64 darwin-arm64 win32-x64; do
