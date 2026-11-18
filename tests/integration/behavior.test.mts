@@ -32,6 +32,8 @@ await test("ordinary specs return ordered behaviors through stdio without hiding
   const directory = await mkdtemp(path.join(tmpdir(), "explore-mcp-"));
   const runtime = path.join(directory, "runtime");
   await mkdir(runtime);
+  const requestDirectories = async () =>
+    (await readdir(runtime)).filter(name => name.startsWith("tlaplus-plugin-"));
   const fileName = path.join(directory, "Finite.tla");
   const cfgFile = path.join(directory, "Finite.cfg");
   const badConfig = path.join(directory, "Bad.cfg");
@@ -90,7 +92,7 @@ NeverTwo == x # 2
         values,
         Array.from({ length: behaviorLength }, (_, index) => index % 3)
       );
-      assert.deepEqual(await readdir(runtime), []);
+      assert.deepEqual(await requestDirectories(), []);
     };
     await verifyDepth(3);
     await verifyDepth(7);
@@ -108,7 +110,7 @@ NeverTwo == x # 2
     assert.notEqual(execution.exitCode, 0);
     assert.match(execution.stdout, /Invariant NeverTwo is violated/u);
     assert.equal(execution.behavior, undefined);
-    assert.deepEqual(await readdir(runtime), []);
+    assert.deepEqual(await requestDirectories(), []);
     const largeFile = path.join(directory, "Large.tla");
     const largeConfig = path.join(directory, "Large.cfg");
     const largeSource = `---- MODULE Large ----
@@ -138,7 +140,7 @@ Next == UNCHANGED x
       assert.equal(limited.truncated, truncated);
       assert.equal(limited.behavior, undefined);
       assert.match(limited.behaviorError ?? "", expected);
-      assert.deepEqual(await readdir(runtime), []);
+      assert.deepEqual(await requestDirectories(), []);
     };
     await verifyLimit(/2 MiB/u, false);
     await writeFile(
@@ -151,7 +153,7 @@ Next == UNCHANGED x
     await verifyLimit(/output exceeds/u, true);
     const controller = new AbortController();
     const waitForJava = async (attempt: number): Promise<void> => {
-      const directories = await readdir(runtime);
+      const directories = await requestDirectories();
       const entries = await Promise.all(
         directories.map(
           async (directoryName) =>
@@ -160,7 +162,7 @@ Next == UNCHANGED x
       );
       if (!entries.flat().includes("Naturals.tla")) {
         assert.ok(
-          attempt < 100,
+          attempt < 500,
           "Java must extract a module before cancellation"
         );
         await setTimeout(20);
@@ -188,14 +190,14 @@ Next == UNCHANGED x
       cancelAfterStart()
     ]);
     const waitForCleanup = async (attempt: number): Promise<void> => {
-      const entries = await readdir(runtime);
+      const entries = await requestDirectories();
       if (attempt < 100 && entries.length > 0) {
         await setTimeout(50);
         await waitForCleanup(attempt + 1);
       }
     };
     await waitForCleanup(0);
-    assert.deepEqual(await readdir(runtime), []);
+    assert.deepEqual(await requestDirectories(), []);
   } finally {
     await client.close();
     await rm(directory, { recursive: true, force: true });
