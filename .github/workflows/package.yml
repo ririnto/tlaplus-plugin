@@ -1,40 +1,27 @@
 name: Test release package
-on: pull_request
+on:
+  pull_request:
+  push:
+    branches: [codex/spring-ai-native]
 
 permissions:
   contents: read
 
 jobs:
-  pack:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: 21
-      - run: npm install
-      - run: npm pack
-      - uses: actions/upload-artifact@v7
-        with:
-          name: npm-package
-          path: '*.tgz'
-          compression-level: 0
-          retention-days: 3
-
-  test:
-    needs: pack
+  native-package:
+    name: Native package (${{ matrix.platform }})
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-24.04
-          - ubuntu-24.04-arm
-          - macos-15
-          - windows-2025
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+          - os: macos-15
+            platform: darwin-arm64
+          - os: windows-2025
+            platform: win32-x64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -43,11 +30,54 @@ jobs:
           node-version: 24
       - uses: actions/setup-java@v6
         with:
-          distribution: temurin
-          java-version: 21
-      - uses: actions/download-artifact@v8
-        with:
-          name: npm-package
+          distribution: graalvm-community
+          java-version: '25'
+          check-latest: true
+      - name: Check native build tools
+        shell: pwsh
+        run: |
+          $platform = node -p 'process.platform + "-" + process.arch'
+          if ($LASTEXITCODE -ne 0 -or $platform -ne $env:EXPECTED_PLATFORM) {
+            throw "Runner platform does not match $env:EXPECTED_PLATFORM"
+          }
+          $nativeImage = if ($IsWindows) { 'bin/native-image.cmd' } else { 'bin/native-image' }
+          & (Join-Path $env:JAVA_HOME $nativeImage) --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          mvn --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
       - run: npm install
-      - shell: bash
+      - name: Build and pack
+        if: runner.os != 'Windows'
+        run: npm pack
+      - name: Build and pack with Visual Studio x64 tools
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $install = & $vswhere -latest -version '[17.13.2,)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $install) { throw 'Visual Studio x64 Build Tools 17.13.2 or later are required' }
+          $script = Join-Path $env:RUNNER_TEMP 'pack-tlaplus.cmd'
+          @"
+          @echo off
+          call "$install\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64
+          if errorlevel 1 exit /b 1
+          if not defined WindowsSdkDir exit /b 1
+          where cl.exe
+          if errorlevel 1 exit /b 1
+          call npm.cmd pack
+          exit /b %errorlevel%
+          "@ | Set-Content $script -Encoding ascii
+          & $env:ComSpec /d /c $script
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test the packed artifact without Java on the consumer PATH
+        shell: bash
         run: npm test -- ./*.tgz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-package-${{ matrix.platform }}
+          path: '*.tgz'
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3

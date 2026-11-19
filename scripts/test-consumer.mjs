@@ -1,5 +1,5 @@
-import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { execFileSync, spawnSync } from "node:child_process";
+import { chmod, copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -18,9 +18,22 @@ try {
     tarball = path.join(directory, files[0]);
   }
   await mkdir(consumer);
+  const bin = path.join(directory, "bin");
+  await mkdir(bin);
+  const node = path.join(bin, path.basename(process.execPath));
+  await copyFile(process.execPath, node);
+  if (process.platform !== "win32") await chmod(node, 0o755);
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
+    !/^(path|java_home(?:_.*)?|jdk_home|jre_home)$/i.test(key)));
+  env.PATH = bin;
+  if (spawnSync("java", ["-version"], { cwd: consumer, env }).error?.code !== "ENOENT") {
+    throw new Error("Java is available in the consumer environment");
+  }
+  console.log("Consumer environment has no Java executable or JAVA_HOME");
   await writeFile(path.join(consumer, "package.json"), JSON.stringify({ private: true }));
-  execFileSync(process.execPath, [npm, "install", "--offline", "--no-audit", "--no-fund", tarball], {
+  execFileSync(node, [npm, "install", "--offline", "--no-audit", "--no-fund", tarball], {
     cwd: consumer,
+    env,
     stdio: "inherit"
   });
   const installed = path.join(consumer, "node_modules/@ririnto/tlaplus-plugin");
@@ -29,7 +42,7 @@ try {
   runMaven([
     "test",
     "-Dtest=InstalledPackageIT",
-    `-Dconsumer.node=${process.execPath}`,
+    `-Dconsumer.node=${node}`,
     `-Dconsumer.npm=${npm}`,
     `-Dconsumer.directory=${consumer}`,
     `-Dconsumer.version=${version}`
