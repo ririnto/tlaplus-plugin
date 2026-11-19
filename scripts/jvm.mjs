@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import spawn from "cross-spawn";
 
 export const root = fileURLToPath(new URL("../", import.meta.url));
 const tlaVersion = "1.7.4";
@@ -10,15 +10,10 @@ const tlaDigest = "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050
 const tlaRelease = `https://github.com/tlaplus/tlaplus/releases/download/v${tlaVersion}/tla2tools.jar`;
 
 export function runMaven(args) {
-  const options = { cwd: root, stdio: "inherit" };
-  if (process.platform === "win32") {
-    const command = ["mvn.cmd", "-B", "-ntp", ...args].map(argument => `"${argument}"`).join(" ");
-    execFileSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", `"${command}"`], {
-      ...options,
-      windowsVerbatimArguments: true
-    });
-  } else {
-    execFileSync("mvn", ["-B", "-ntp", ...args], options);
+  const result = spawn.sync("mvn", ["-B", "-ntp", ...args], { cwd: root, stdio: "inherit" });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`Maven exited with ${result.signal || result.status}`);
   }
 }
 
