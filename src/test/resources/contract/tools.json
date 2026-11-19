@@ -1,0 +1,128 @@
+[
+  {
+    "name": "tlaplus_mcp_sany_parse",
+    "description": "Parse and semantically analyze a TLA+ module with SANY.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "fileName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fileName"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "tlaplus_mcp_tlc_check",
+    "description": "Model-check a TLA+ module with TLC.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "fileName": {
+          "type": "string"
+        },
+        "cfgFile": {
+          "type": "string"
+        },
+        "extraOpts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "extraJavaOpts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "fileName"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "tlaplus_mcp_tlc_smoke",
+    "description": "Run one bounded random TLC simulation trace (100 steps by default).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "fileName": {
+          "type": "string"
+        },
+        "cfgFile": {
+          "type": "string"
+        },
+        "extraOpts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "extraJavaOpts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "fileName"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "tlaplus_mcp_tlc_explore",
+    "description": "Return one bounded random TLC behavior with ordered states and variable values, including the initial state.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "fileName": {
+          "type": "string"
+        },
+        "cfgFile": {
+          "type": "string"
+        },
+        "extraOpts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "extraJavaOpts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "behaviorLength": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "fileName"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  }
+]

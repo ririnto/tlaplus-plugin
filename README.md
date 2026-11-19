@@ -1,17 +1,23 @@
 # TLA+ plugin
 
-Run SANY and TLC from an MCP client without opening an editor. The npm package includes the stdio server, the official TLA+ tools JAR, GraalVM Community runtimes, three modeling skills, and the TLA+ knowledge base from the VS Code extension.
+Run SANY and TLC from an MCP client without opening an editor.
+The npm package includes a Spring AI stdio server with the official TLA+ tools, modeling skills, and the TLA+ knowledge base from the VS Code extension.
 
 ## Use the package
 
-Install Node.js 24 or later. Linux x64 and arm64 (glibc), macOS on Apple silicon, and Windows x64 use the bundled runtime. Other platforms can use Java 11 or later on PATH. Install the release tarball in your project, then start the server with `npm exec -- tlaplus-plugin`. After registry publication, the package name is `@ririnto/tlaplus-plugin`.
+Install Node.js 24 or later and Java 21 or later for your platform.
+The package uses the Java installation at `JAVA_HOME`, or `java` on `PATH` when `JAVA_HOME` is unset.
+Install the release tarball in your project, then start the server with `npm exec -- tlaplus-plugin`.
+After registry publication, the package name is `@ririnto/tlaplus-plugin`.
 
 ```sh
 npm install /path/to/ririnto-tlaplus-plugin-2026.11.19+02.tgz
 npm exec -- tlaplus-plugin
 ```
 
-For a general MCP client, set `command` to `node` and pass the absolute path to `node_modules/@ririnto/tlaplus-plugin/dist/server.mjs` as its only argument. The server communicates over stdio and uses the JAR shipped with the package. Only run trusted specifications and JVM options.
+For a general MCP client, set `command` to `node` and pass the absolute path to `node_modules/@ririnto/tlaplus-plugin/dist/server.mjs` as its only argument.
+The server writes JSON-RPC to stdout and its own diagnostics to stderr.
+Only run trusted specifications and JVM options.
 
 Claude Code, Codex, and Cursor manifests are included. Point your host at the installed package directory or the extracted tarball. For example, from the npm project:
 
@@ -38,16 +44,24 @@ The bundled skills cover adding a variable, splitting an action, and deriving a 
 
 ## Build a release
 
-Build the universal tarball on Linux x64 with Git, Node.js 24+, npm, curl, jq, GNU tar, and unzip.
+Build the tarball with Git, Node.js 24 or later, a Java 21 or later JDK, and Maven 3.9 or later.
 
 ```sh
 npm install
 npm pack
-npm test
+npm test -- ./ririnto-tlaplus-plugin-2026.11.19+02.tgz
 ```
 
-The build fetches the default branches of AgentSkills and vscode-tlaplus, downloads the TLA+ 1.7.4 release JAR, and resolves the latest stable GraalVM Community release once per build. GitHub Actions installs its Linux JDK with the official GraalVM setup action. Its `jlink` builds all four runtimes from that release’s platform-specific JDK modules. The tarball includes the upstream licenses and JavaScript dependency notices. Once installed, the tools and knowledge base work offline.
+The build fetches the default branches of AgentSkills and vscode-tlaplus.
+It checks the SHA-256 of the upstream TLA+ 1.7.4 release JAR before installing it as a local Maven dependency.
+The server uses Spring AI 2.0.2 with Spring Boot 4.1.2.
+Each tool call uses a separate JVM to isolate TLA+ process state and terminate cancelled calls.
+The tarball includes upstream licenses and works offline after installation.
+
+`npm pack` runs the Kotlin contract tests before building the tarball.
+`npm test` installs the tarball in a temporary project and checks the shipped stdio entry point with Kotest.
+GitHub Actions runs the consumer checks on Linux x64 and arm64, macOS on Apple silicon, and Windows x64.
 
 Native plugin manifests use `yyyy.MM.dd.seq`. The npm package uses the SemVer form `yyyy.MM.dd+seq`. npm compares versions without build metadata, so changing only `seq` does not give a second publishable registry version for the same date.
 
-[AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [GraalVM Community](https://github.com/graalvm/graalvm-ce-builds) · [GraalVM setup action](https://github.com/graalvm/setup-graalvm)
+[AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [Spring AI MCP Server Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html)

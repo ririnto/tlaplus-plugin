@@ -12,21 +12,12 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Resolve latest GraalVM Community release
-        id: graalvm
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api repos/graalvm/graalvm-ce-builds/releases/latest > "$RUNNER_TEMP/graalvm.json"
-          jq -er '.tag_name | sub("^(graal|jdk)-"; "") | "version=\(.)"' "$RUNNER_TEMP/graalvm.json" >> "$GITHUB_OUTPUT"
-      - uses: graalvm/setup-graalvm@v1
+      - uses: actions/setup-java@v6
         with:
-          distribution: graalvm-community
-          version: ${{ steps.graalvm.outputs.version }}
+          distribution: temurin
+          java-version: 21
       - run: npm install
       - run: npm pack
-        env:
-          GRAALVM_RELEASE_FILE: ${{ runner.temp }}/graalvm.json
       - uses: actions/upload-artifact@v7
         with:
           name: npm-package
@@ -50,10 +41,13 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
       - uses: actions/download-artifact@v8
         with:
           name: npm-package
       - run: npm install
       - shell: bash
-        run: tar -xf ./*.tgz --strip-components=1 package/dist
-      - run: npm test
+        run: npm test -- ./*.tgz
