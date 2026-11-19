@@ -12,11 +12,12 @@ internal const val EXPLORE_NAME = "tlaplus_mcp_tlc_explore"
 private const val MAX_SAFE_INTEGER = 9007199254740991L
 internal val isWindows = System.getProperty("os.name").startsWith("Windows")
 
-internal enum class Tool(val toolName: String) {
-    SANY(SANY_NAME),
-    CHECK(CHECK_NAME),
-    SMOKE(SMOKE_NAME),
-    EXPLORE(EXPLORE_NAME);
+internal enum class Tool(val toolName: String, val description: String) {
+    SANY(SANY_NAME, "Parse and semantically analyze a TLA+ module with SANY."),
+    CHECK(CHECK_NAME, "Model-check a TLA+ module with TLC."),
+    SMOKE(SMOKE_NAME, "Run one bounded random TLC simulation trace (100 steps by default)."),
+    EXPLORE(EXPLORE_NAME,
+        "Return one bounded random TLC behavior with ordered states and variable values, including the initial state.");
 
     fun inputSchema(): Map<String, Any> {
         val string = mapOf("type" to "string")

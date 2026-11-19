@@ -1,13 +1,13 @@
 # TLA+ plugin
 
 Run SANY and TLC from an MCP client without opening an editor.
-The npm package includes a Spring AI stdio server with the official TLA+ tools, modeling skills, and the TLA+ knowledge base from the VS Code extension.
+The npm package includes a native Spring AI stdio server with the official TLA+ tools, modeling skills, and the TLA+ knowledge base from the VS Code extension.
 
 ## Use the package
 
-Install Node.js 24 or later and Java 21 or later for your platform.
-The package uses the Java installation at `JAVA_HOME`, or `java` on `PATH` when `JAVA_HOME` is unset.
-Install the release tarball in your project, then start the server with `npm exec -- tlaplus-plugin`.
+Install Node.js 24 or later to use the npm command.
+Choose the tarball for Linux x64, Linux ARM64, macOS ARM64, or Windows x64 and install it in your project.
+Start the server with `npm exec -- tlaplus-plugin`.
 After registry publication, the package name is `@ririnto/tlaplus-plugin`.
 
 ```sh
@@ -16,8 +16,10 @@ npm exec -- tlaplus-plugin
 ```
 
 For a general MCP client, set `command` to `node` and pass the absolute path to `node_modules/@ririnto/tlaplus-plugin/dist/server.mjs` as its only argument.
+You can also use `dist/tlaplus-server` directly as the command, or `dist/tlaplus-server.exe` on Windows.
+The executable includes the TLA+ standard modules and the knowledge base.
 The server writes JSON-RPC to stdout and its own diagnostics to stderr.
-Only run trusted specifications and JVM options.
+Only run trusted specifications and worker options.
 
 Claude Code, Codex, and Cursor manifests are included. Point your host at the installed package directory or the extracted tarball. For example, from the npm project:
 
@@ -38,13 +40,19 @@ For Cursor, extract the tarball's `package/` contents into `~/.cursor/plugins/lo
 | `tlaplus_mcp_tlc_smoke` | Run one bounded random simulation. |
 | `tlaplus_mcp_tlc_explore` | Return one bounded behavior, including its initial state and ordered variable values. |
 
-Pass an absolute `fileName`. TLC tools also accept an absolute `cfgFile`, plus `extraOpts` and `extraJavaOpts` as arrays of individual arguments. Explore accepts a positive `behaviorLength` and defaults to 100. Requests support cancellation and have a two-minute Java execution limit. Results include process status, diagnostics and truncation information.
+Pass an absolute `fileName`.
+TLC tools also accept an absolute `cfgFile`, plus `extraOpts` and `extraJavaOpts` as arrays of individual arguments.
+The `extraJavaOpts` field accepts native runtime options such as `-Xmx256m` and system properties such as `-Dkey=value`.
+Explore accepts a positive `behaviorLength` and defaults to 100.
+Requests support cancellation and have a two-minute execution limit.
+Results include process status, diagnostics, and truncation information.
 
 The bundled skills cover adding a variable, splitting an action, and deriving a specification from source code. MCP clients can list and read the bundled Markdown articles at `tlaplus://knowledge/<filename>`, for example `tlaplus://knowledge/tlc-config-files.md`.
 
 ## Build a release
 
-Build the tarball with Git, Node.js 24 or later, a Java 21 or later JDK, and Maven 3.9 or later.
+Build the tarball on the target platform with Git, Node.js 24 LTS, GraalVM Community for JDK 25, and Maven.
+The Windows build uses x64 Visual Studio 2022 Build Tools and the Windows 11 SDK.
 
 ```sh
 npm install
@@ -55,12 +63,12 @@ npm test -- ./ririnto-tlaplus-plugin-2026.11.19+02.tgz
 The build fetches the default branches of AgentSkills and vscode-tlaplus.
 It checks the SHA-256 of the upstream TLA+ 1.7.4 release JAR before installing it as a local Maven dependency.
 The server uses Spring AI 2.0.2 with Spring Boot 4.1.2.
-Each tool call uses a separate JVM to isolate TLA+ process state and terminate cancelled calls.
+Each tool call starts a worker process from the same executable to isolate TLA+ process state and terminate cancelled calls.
 The tarball includes upstream licenses and works offline after installation.
 
 `npm pack` runs the Kotlin contract tests before building the tarball.
-`npm test` installs the tarball in a temporary project and checks the shipped stdio entry point with Kotest.
-GitHub Actions runs the consumer checks on Linux x64 and arm64, macOS on Apple silicon, and Windows x64.
+`npm test` installs the tarball in a temporary project with Java removed from the consumer's `PATH` and checks the shipped stdio entry point with Kotest.
+GitHub Actions builds and tests a separate tarball on each target platform.
 
 Native plugin manifests use `yyyy.MM.dd.seq`. The npm package uses the SemVer form `yyyy.MM.dd+seq`. npm compares versions without build metadata, so changing only `seq` does not give a second publishable registry version for the same date.
 

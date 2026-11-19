@@ -16,12 +16,11 @@ import java.nio.file.StandardOpenOption.WRITE
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
-import org.springframework.beans.factory.annotation.Value
+import org.graalvm.nativeimage.ProcessProperties
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.Path
 import kotlin.io.path.deleteRecursively
 
 private const val LIMIT = 2 * 1024 * 1024
@@ -53,7 +52,7 @@ internal data class Execution(
 }
 
 @Component
-internal class TlaRunner(@param:Value("\${tlaplus.archive}") private val archive: Path) {
+internal class TlaRunner {
     private val requests = Executors.newThreadPerTaskExecutor(Thread.ofPlatform().name("tla-worker-", 0).factory())
     private val scheduler = Schedulers.fromExecutorService(requests, "tla-worker")
 
@@ -103,17 +102,16 @@ internal class TlaRunner(@param:Value("\${tlaplus.archive}") private val archive
             val reserved = input.options.firstOrNull { ownedOption.containsMatchIn(it) }
             require(reserved == null) { "Explore owns this option: $reserved" }
         }
-        val java = Path(System.getProperty("java.home"), "bin", if (isWindows) "java.exe" else "java")
-        add(java.toString())
+        add(ProcessProperties.getExecutableName())
+        add(WORKER_MODE)
+        add(if (tool == Tool.SANY) "sany" else "tlc")
         addAll(input.javaOptions)
         add("-Djava.io.tmpdir=$directory")
-        add("-Dloader.home=${archive.parent}")
-        add("-Dloader.main=${TlaWorker::class.java.name}")
-        addAll(listOf("-cp", archive.toString(), "org.springframework.boot.loader.launch.PropertiesLauncher"))
+        add(WORKER_ARGUMENTS)
         if (tool == Tool.SANY) {
-            addAll(listOf("sany", input.file.toString()))
+            add(input.file.toString())
         } else {
-            addAll(listOf("tlc", "-metadir", directory.toString(), "-workers", "1"))
+            addAll(listOf("-metadir", directory.toString(), "-workers", "1"))
             input.config?.let { addAll(listOf("-config", it.toString())) }
             if (tool == Tool.SMOKE || tool == Tool.EXPLORE) {
                 val simulation = if (tool == Tool.SMOKE) "num=1" else "num=1,file=${directory.resolve(TRACE_PREFIX)}"

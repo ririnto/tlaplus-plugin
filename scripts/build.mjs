@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { chmod, cp, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { build } from "esbuild";
 
@@ -18,7 +18,6 @@ function checkout(repo, paths) {
 
 try {
   await prepareTlaLibrary();
-  runMaven(["package"]);
   const skills = checkout("AgentSkills", ["skills", "LICENSE"]);
   const vscode = checkout("vscode-tlaplus", ["resources/knowledgebase", "LICENSE"]);
   await cp(path.join(skills, "skills"), path.join(stage, "skills"), { recursive: true });
@@ -30,22 +29,29 @@ try {
   await mkdir(dist);
   await cp(path.join(vscode, "resources/knowledgebase"), path.join(dist, "knowledgebase"), { recursive: true });
   await cp(path.join(vscode, "LICENSE"), path.join(dist, "knowledgebase/LICENSE"));
-  await cp(path.join(root, "target/tlaplus-server.jar"), path.join(dist, "tlaplus-server.jar"));
+  const knowledge = path.join(root, "target/generated-resources/knowledgebase");
+  await rm(knowledge, { recursive: true, force: true });
+  await cp(path.join(dist, "knowledgebase"), knowledge, { recursive: true });
+  const articles = await readdir(knowledge, { withFileTypes: true });
+  const names = articles.filter(article => article.isFile() && article.name.endsWith(".md")).map(article => article.name);
+  await writeFile(path.join(knowledge, "index.txt"), names.sort().join("\n") + "\n");
+  runMaven(["-Pnative", "package", "native:compile-no-fork"]);
+  const executable = process.platform === "win32" ? "tlaplus-server.exe" : "tlaplus-server";
+  await cp(path.join(root, "target", executable), path.join(dist, executable));
+  await chmod(path.join(dist, executable), 0o755);
   const tlaLicense = await fetch("https://raw.githubusercontent.com/tlaplus/tlaplus/v1.7.4/LICENSE", {
     signal: AbortSignal.timeout(30_000)
   });
   if (!tlaLicense.ok) throw new Error(`TLA+ license download failed with HTTP ${tlaLicense.status}`);
   await writeFile(path.join(dist, "TLA-LICENSE"), await tlaLicense.text());
 
-  const { version } = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
   await build({
     absWorkingDir: root,
     entryPoints: ["src/launcher.mts"],
     outfile: path.join(dist, "server.mjs"),
     platform: "node",
     target: "node24",
-    format: "esm",
-    define: { TLA_PLUGIN_VERSION: JSON.stringify(version) }
+    format: "esm"
   });
   await chmod(path.join(dist, "server.mjs"), 0o755);
   for (const name of ["dist", "skills"]) {

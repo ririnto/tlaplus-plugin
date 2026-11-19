@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.Path
@@ -24,7 +25,7 @@ private val value = Regex("(?m)^x = (\\d+)$")
 
 class InstalledPackageIT : FunSpec({
     test("the installed npm command initializes and advertises the original tool schemas and knowledge") {
-        withClient(npmCommand = true) { client, _ ->
+        withClient(Launch.NPM) { client, _ ->
             val tools = client.call("tools/list").path("tools")
             val expected = javaClass.getResourceAsStream("/contract/tools.json")!!.use { json.readTree(it) }
             tools shouldBe expected
@@ -38,6 +39,19 @@ class InstalledPackageIT : FunSpec({
             val knowledge = client.consumer.resolve("node_modules/@ririnto/tlaplus-plugin/dist/knowledgebase")
             article.path("text").asString() shouldBe knowledge.resolve("tlc-config-files.md").readText()
             Files.exists(knowledge.resolveSibling("runtimes")) shouldBe false
+        }
+    }
+
+    test("the extracted executable starts alone and serves embedded content") {
+        withClient(Launch.STANDALONE) { client, _ ->
+            val tools = client.call("tools/list").path("tools")
+            val expected = javaClass.getResourceAsStream("/contract/tools.json")!!.use { json.readTree(it) }
+            tools shouldBe expected
+            val uri = "tlaplus://knowledge/tlc-config-files.md"
+            val article = client.call("resources/read", mapOf("uri" to uri)).path("contents").get(0)
+            article.path("text").asString().isNotBlank() shouldBe true
+            val parse = client.tool(SANY, mapOf("fileName" to Path("examples/Counter.tla").absolutePathString()))
+            ("Semantic processing of module Counter" in success(parse).path("stdout").asString()) shouldBe true
         }
     }
 
@@ -231,14 +245,16 @@ private fun success(result: JsonNode, hasBehavior: Boolean = false): JsonNode {
     return execution
 }
 
+private enum class Launch { NPM, WRAPPER, STANDALONE }
+
 private fun withClient(
-    npmCommand: Boolean = false,
+    launch: Launch = Launch.WRAPPER,
     protocolVersion: String = "2025-11-25",
     action: (WireClient, Path) -> Unit
 ) {
     val root = Files.createTempDirectory("tlaplus-wire-")
     try {
-        WireClient(root, npmCommand).use { client ->
+        WireClient(root, launch).use { client ->
             client.initialize(protocolVersion)
             action(client, root)
         }
@@ -255,7 +271,7 @@ private fun awaitCondition(description: String, test: () -> Boolean) {
     }
 }
 
-private class WireClient(root: Path, npmCommand: Boolean) : AutoCloseable {
+private class WireClient(root: Path, launch: Launch) : AutoCloseable {
     val consumer = Path(checkNotNull(System.getProperty("consumer.directory")))
     private val stderr = root.resolve("stderr")
     private val runtime = Files.createDirectory(root.resolve("runtime"))
@@ -268,13 +284,25 @@ private class WireClient(root: Path, npmCommand: Boolean) : AutoCloseable {
 
     init {
         val node = checkNotNull(System.getProperty("consumer.node"))
-        val launcher = consumer.resolve("node_modules/@ririnto/tlaplus-plugin/dist/server.mjs")
-        val command = if (npmCommand) {
-            listOf(node, checkNotNull(System.getProperty("consumer.npm")), "exec", "--offline", "--", "tlaplus-plugin")
-        } else {
-            listOf(node, launcher.toString())
+        val dist = consumer.resolve("node_modules/@ririnto/tlaplus-plugin/dist")
+        val command = when (launch) {
+            Launch.NPM -> listOf(node, checkNotNull(System.getProperty("consumer.npm")), "exec", "--offline", "--", "tlaplus-plugin")
+            Launch.WRAPPER -> listOf(node, dist.resolve("server.mjs").toString())
+            Launch.STANDALONE -> {
+                val name = if (isWindows) "tlaplus-server.exe" else "tlaplus-server"
+                val binary = Files.copy(dist.resolve(name), root.resolve(name), COPY_ATTRIBUTES)
+                listOf(binary.toString(), "-Djava.io.tmpdir=$runtime")
+            }
         }
-        val builder = ProcessBuilder(command).directory(consumer.toFile()).redirectError(stderr.toFile())
+        val cwd = if (launch == Launch.STANDALONE) root else consumer
+        val builder = ProcessBuilder(command).directory(cwd.toFile()).redirectError(stderr.toFile())
+        val environment = builder.environment()
+        environment.keys.removeIf { key ->
+            key.equals("PATH", ignoreCase = true) || key.startsWith("JAVA_HOME", ignoreCase = true) ||
+                key.equals("JDK_HOME", ignoreCase = true) || key.equals("JRE_HOME", ignoreCase = true)
+        }
+        environment["PATH"] = (if (launch == Launch.STANDALONE) runtime else Path(node).parent).toString()
+        if (launch == Launch.NPM && !isWindows) environment["npm_config_script_shell"] = "/bin/sh"
         for (name in listOf("TMPDIR", "TEMP", "TMP")) builder.environment()[name] = runtime.toString()
         builder.environment()["SPRING_MAIN_BANNER_MODE"] = "console"
         process = builder.start()
@@ -341,7 +369,7 @@ private class WireClient(root: Path, npmCommand: Boolean) : AutoCloseable {
         while (!backlog.containsKey(id)) {
             val remaining = deadline - System.nanoTime()
             val event = if (remaining > 0) events.poll(remaining, TimeUnit.NANOSECONDS) else null
-            checkNotNull(event) { "No response for $id. JVM diagnostics: ${stderr.readText()}" }
+            checkNotNull(event) { "No response for $id. Server diagnostics: ${stderr.readText()}" }
             collect(event.getOrThrow())
         }
         val frame = backlog.remove(id)!!
@@ -370,7 +398,7 @@ private class WireClient(root: Path, npmCommand: Boolean) : AutoCloseable {
 
     fun disconnect() {
         if (process.isAlive) writer.close()
-        check(process.waitFor(15, TimeUnit.SECONDS)) { "Server stayed alive after stdin closed. JVM diagnostics: ${stderr.readText()}" }
+        check(process.waitFor(15, TimeUnit.SECONDS)) { "Server stayed alive after stdin closed. Server diagnostics: ${stderr.readText()}" }
         process.exitValue() shouldBe 0
     }
 

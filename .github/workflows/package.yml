@@ -1,53 +1,105 @@
 name: Test release package
-on: pull_request
+on:
+  pull_request:
+  push:
+    branches: [codex/spring-ai-native]
 
 permissions:
   contents: read
 
 jobs:
-  pack:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: 21
-      - run: npm install
-      - run: npm pack
-      - uses: actions/upload-artifact@v7
-        with:
-          name: npm-package
-          path: '*.tgz'
-          compression-level: 0
-          retention-days: 3
-
-  test:
-    needs: pack
+  native-package:
+    name: Native package (${{ matrix.platform }})
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-24.04
-          - ubuntu-24.04-arm
-          - macos-15
-          - windows-2025
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+            graalvm: linux-x64_bin.tar.gz
+            sha256: c6438dee6c3ade2220d40b7ccdcad24b512d30e233e61bb4fc70519522de34ef
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+            graalvm: linux-aarch64_bin.tar.gz
+            sha256: 41741c0650ae7564a78335f9e4fc353a902e6ff1d4140f2e4fabd1c55d5cce66
+          - os: macos-15
+            platform: darwin-arm64
+            graalvm: macos-aarch64_bin.tar.gz
+            sha256: 54369d4a5931a5a2101c7c52444a4e7e6647a3a4e041335053cda6fd22295e0c
+          - os: windows-2025
+            platform: win32-x64
+            graalvm: windows-x64_bin.zip
+            sha256: b02c3b162129fa8cbfa7ebd0fcc1ae6eba2fc736bf3bef8e40e5ace3e9d9a0d6
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - name: Download GraalVM and Maven
+        shell: pwsh
+        env:
+          GRAALVM_ASSET: ${{ matrix.graalvm }}
+          GRAALVM_SHA256: ${{ matrix.sha256 }}
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP "graalvm-$env:GRAALVM_ASSET"
+          curl --fail --location --retry 2 --output $archive "https://github.com/graalvm/graalvm-ce-builds/releases/download/graal-25.5.5.0.3/graalvm-community-jdk-25i5-25.0.5.0.3_$env:GRAALVM_ASSET"
+          if ($LASTEXITCODE -ne 0 -or (Get-FileHash $archive -Algorithm SHA256).Hash -ne $env:GRAALVM_SHA256) {
+            throw 'GraalVM download failed verification'
+          }
+          $maven = Join-Path $env:RUNNER_TEMP 'apache-maven-3.10.1-bin.tar.gz'
+          curl --fail --location --retry 2 --output $maven 'https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.10.1/apache-maven-3.10.1-bin.tar.gz'
+          if ($LASTEXITCODE -ne 0 -or (Get-FileHash $maven -Algorithm SHA512).Hash -ne '8af2fcc48ee6b8f8fc0b21054226e14404b88500df6483cdeb3ae603408f6de27b1397ac591a9fb0d98fee64f4f624fee1383efd25b8998786cda1598fb9ea39') {
+            throw 'Maven download failed verification'
+          }
+          tar -xzf $maven -C $env:RUNNER_TEMP
+          if ($LASTEXITCODE -ne 0) { throw 'Maven extraction failed' }
+          Join-Path $env:RUNNER_TEMP 'apache-maven-3.10.1/bin' >> $env:GITHUB_PATH
       - uses: actions/setup-java@v6
         with:
-          distribution: temurin
-          java-version: 21
-      - uses: actions/download-artifact@v8
-        with:
-          name: npm-package
+          distribution: jdkfile
+          java-version: '25'
+          jdk-file: ${{ runner.temp }}/graalvm-${{ matrix.graalvm }}
+      - name: Check native build tools
+        shell: bash
+        run: |
+          if [[ "$(node -p 'process.platform + "-" + process.arch')" != "$EXPECTED_PLATFORM" ]]; then
+            echo "Runner platform does not match $EXPECTED_PLATFORM" >&2
+            exit 1
+          fi
+          native-image --version
+          mvn --version
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
       - run: npm install
-      - shell: bash
+      - name: Build and pack
+        if: runner.os != 'Windows'
+        run: npm pack
+      - name: Build and pack with Visual Studio 2022 x64 tools
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $install = & $vswhere -latest -version '[17.13.2,18.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $install) { throw 'Visual Studio 2022 x64 Build Tools are required' }
+          $script = Join-Path $env:RUNNER_TEMP 'pack-tlaplus.cmd'
+          @"
+          @echo off
+          call "$install\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64
+          if errorlevel 1 exit /b 1
+          where cl.exe
+          if errorlevel 1 exit /b 1
+          call npm.cmd pack
+          "@ | Set-Content $script -Encoding ascii
+          & $env:ComSpec /d /c $script
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test the packed artifact without Java on the consumer PATH
+        shell: bash
         run: npm test -- ./*.tgz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-package-${{ matrix.platform }}
+          path: '*.tgz'
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
