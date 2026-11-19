@@ -129,7 +129,11 @@ internal class TlaRunner {
                 worker.outputStream.close()
                 val out = readers.submit<Captured> { capture(worker.inputStream, sany) }
                 val err = readers.submit<Captured> { capture(worker.errorStream, sany) }
-                check(worker.waitFor(120, TimeUnit.SECONDS)) { "The operation was aborted due to timeout" }
+                try {
+                    worker.onExit().get(120, TimeUnit.SECONDS)
+                } catch (_: TimeoutException) {
+                    error("The operation was aborted due to timeout")
+                }
                 val stdout = out.get()
                 val stderr = err.get()
                 val status = worker.exitValue()
