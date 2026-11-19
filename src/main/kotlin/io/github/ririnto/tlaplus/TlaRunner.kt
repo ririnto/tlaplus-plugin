@@ -156,7 +156,7 @@ internal class TlaRunner {
                 val stdout = out.get()
                 val stderr = err.get()
                 val status = worker.exitValue()
-                val killed = !isWindows && status == POSIX_SIGKILL_STATUS
+                val killed = !ToolInput.isWindows && status == POSIX_SIGKILL_STATUS
                 Execution(
                     status.takeUnless { killed }, if (killed) "SIGKILL" else null,
                     stdout.text, stderr.text, stdout.truncated || stderr.truncated,

@@ -86,7 +86,7 @@ class InstalledPackageIT : FunSpec({
             val sanyFailure = execution(broken, failed = true)
             sanyFailure.path("stdout").asString().contains("Parse Error") shouldBe true
             execution(client.tool(SANY, mapOf("fileName" to counter.root.toString())), failed = true)
-            if (isWindows) {
+            if (ToolInput.isWindows) {
                 success(client.tool(SANY, mapOf("fileName" to counter.toString().drop(2))))
             }
 
@@ -293,7 +293,11 @@ private class WireClient(root: Path, launch: Launch) : AutoCloseable {
             Launch.NPM -> listOf(node, checkNotNull(System.getProperty("consumer.npm")), "exec", "--offline", "--", "tlaplus-plugin")
             Launch.WRAPPER -> listOf(node, dist.resolve("server.mjs").toString())
             Launch.STANDALONE -> {
-                val name = if (isWindows) "tlaplus-server.exe" else "tlaplus-server"
+                val name =
+                    when (ToolInput.isWindows) {
+                        true -> "tlaplus-server.exe"
+                        false -> "tlaplus-server"
+                    }
                 val binary = Files.copy(dist.resolve(name), root.resolve(name), COPY_ATTRIBUTES)
                 listOf(binary.toString(), "-Djava.io.tmpdir=$runtime")
             }
@@ -306,7 +310,7 @@ private class WireClient(root: Path, launch: Launch) : AutoCloseable {
                 key.equals("JDK_HOME", ignoreCase = true) || key.equals("JRE_HOME", ignoreCase = true)
         }
         environment["PATH"] = (if (launch == Launch.STANDALONE) runtime else Path(node).parent).toString()
-        if (launch == Launch.NPM && !isWindows) environment["npm_config_script_shell"] = "/bin/sh"
+        if (launch == Launch.NPM && !ToolInput.isWindows) environment["npm_config_script_shell"] = "/bin/sh"
         for (name in listOf("TMPDIR", "TEMP", "TMP")) builder.environment()[name] = runtime.toString()
         builder.environment()["SPRING_MAIN_BANNER_MODE"] = "console"
         builder.environment()["LOGGING_LEVEL_IO_GITHUB_RIRINTO_TLAPLUS"] = "DEBUG"
