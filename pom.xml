@@ -10,9 +10,10 @@
     </parent>
     <groupId>io.github.ririnto</groupId>
     <artifactId>tlaplus-plugin</artifactId>
-    <version>2026.11.19+02</version>
+    <version>${revision}</version>
 
     <properties>
+        <revision>0.0.0-SNAPSHOT</revision>
         <java.version>21</java.version>
         <spring-ai.version>2.0.2</spring-ai.version>
         <tla2tools.version>1.7.4</tla2tools.version>

@@ -5,12 +5,13 @@ import { fileURLToPath } from "node:url";
 import spawn from "cross-spawn";
 
 export const root = fileURLToPath(new URL("../", import.meta.url));
+const { version } = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 const tlaVersion = "1.7.4";
 const tlaDigest = "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88";
 const tlaRelease = `https://github.com/tlaplus/tlaplus/releases/download/v${tlaVersion}/tla2tools.jar`;
 
 export function runMaven(args) {
-  const result = spawn.sync("mvn", ["-B", "-ntp", ...args], { cwd: root, stdio: "inherit" });
+  const result = spawn.sync("mvn", ["-B", "-ntp", `-Drevision=${version}`, ...args], { cwd: root, stdio: "inherit" });
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(`Maven exited with ${result.signal || result.status}`);

@@ -11,7 +11,7 @@ Start the server with `npm exec -- tlaplus-plugin`.
 After registry publication, the package name is `@ririnto/tlaplus-plugin`.
 
 ```sh
-npm install /path/to/ririnto-tlaplus-plugin-2026.11.19+02.tgz
+npm install /path/to/ririnto-tlaplus-plugin-1.7.4-2026.11.19.1.tgz
 npm exec -- tlaplus-plugin
 ```
 
@@ -57,7 +57,7 @@ The Windows build uses x64 Visual Studio Build Tools 17.13.2 or later and the Wi
 ```sh
 npm install
 npm pack
-npm test -- ./ririnto-tlaplus-plugin-2026.11.19+02.tgz
+npm test -- ./ririnto-tlaplus-plugin-1.7.4-2026.11.19.1.tgz
 ```
 
 The build fetches the default branches of AgentSkills and vscode-tlaplus.
@@ -70,6 +70,9 @@ The tarball includes upstream licenses and works offline after installation.
 `npm test` installs the tarball in a temporary project with Java removed from the consumer's `PATH` and checks the shipped stdio entry point with Kotest.
 GitHub Actions builds and tests a separate tarball on each target platform.
 
-Native plugin manifests use `yyyy.MM.dd.seq`. The npm package uses the SemVer form `yyyy.MM.dd+seq`. npm compares versions without build metadata, so changing only `seq` does not give a second publishable registry version for the same date.
+Set the release version in `package.json` using the TLA+ tools version, UTC build date, and build number, for example `1.7.4-2026.11.19.1`.
+Write the date and build number as numeric prerelease identifiers without leading zeros.
+The MCP server reports the same version in its initialize response.
+Editor plugin manifests use `yyyy.MM.dd.seq`.
 
 [AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [Spring AI MCP Server Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html)
