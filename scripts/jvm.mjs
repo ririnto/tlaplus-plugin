@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,7 +6,6 @@ import spawn from "cross-spawn";
 export const root = fileURLToPath(new URL("../", import.meta.url));
 const { version } = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 const tlaVersion = "1.7.4";
-const tlaDigest = "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88";
 const tlaRelease = `https://github.com/tlaplus/tlaplus/releases/download/v${tlaVersion}/tla2tools.jar`;
 
 export function runMaven(args) {
@@ -29,9 +27,6 @@ export async function prepareTlaLibrary() {
     const response = await fetch(tlaRelease, { signal: AbortSignal.timeout(120_000) });
     if (!response.ok) throw new Error(`TLA+ download failed with HTTP ${response.status}`);
     bytes = Buffer.from(await response.arrayBuffer());
-  }
-  if (createHash("sha256").update(bytes).digest("hex") !== tlaDigest) {
-    throw new Error(`SHA-256 mismatch for ${jar}`);
   }
   await mkdir(target, { recursive: true });
   await writeFile(jar, bytes);

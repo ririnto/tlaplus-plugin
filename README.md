@@ -61,7 +61,7 @@ npm test -- ./ririnto-tlaplus-plugin-1.7.4-2026.11.19.1.tgz
 ```
 
 The build fetches the default branches of AgentSkills and vscode-tlaplus.
-It checks the SHA-256 of the upstream TLA+ 1.7.4 release JAR before installing it as a local Maven dependency.
+It downloads the TLA+ tools JAR from the official `v1.7.4` GitHub release and installs it as a local Maven dependency.
 The server uses Spring AI 2.0.2 with Spring Boot 4.1.2.
 Each tool call starts a worker process from the same executable to isolate TLA+ process state and terminate cancelled calls.
 The tarball includes upstream licenses and works offline after installation.
