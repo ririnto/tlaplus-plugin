@@ -61,35 +61,40 @@ jobs:
           java-version: '25'
           jdk-file: ${{ runner.temp }}/graalvm-${{ matrix.graalvm }}
       - name: Check native build tools
-        shell: bash
+        shell: pwsh
         run: |
-          if [[ "$(node -p 'process.platform + "-" + process.arch')" != "$EXPECTED_PLATFORM" ]]; then
-            echo "Runner platform does not match $EXPECTED_PLATFORM" >&2
-            exit 1
-          fi
-          native-image --version
+          $platform = node -p 'process.platform + "-" + process.arch'
+          if ($LASTEXITCODE -ne 0 -or $platform -ne $env:EXPECTED_PLATFORM) {
+            throw "Runner platform does not match $env:EXPECTED_PLATFORM"
+          }
+          $nativeImage = if ($IsWindows) { 'bin/native-image.cmd' } else { 'bin/native-image' }
+          & (Join-Path $env:JAVA_HOME $nativeImage) --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           mvn --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         env:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
       - run: npm install
       - name: Build and pack
         if: runner.os != 'Windows'
         run: npm pack
-      - name: Build and pack with Visual Studio 2022 x64 tools
+      - name: Build and pack with Visual Studio x64 tools
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
-          $install = & $vswhere -latest -version '[17.13.2,18.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          if (-not $install) { throw 'Visual Studio 2022 x64 Build Tools are required' }
+          $install = & $vswhere -latest -version '[17.13.2,)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $install) { throw 'Visual Studio x64 Build Tools 17.13.2 or later are required' }
           $script = Join-Path $env:RUNNER_TEMP 'pack-tlaplus.cmd'
           @"
           @echo off
           call "$install\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64
           if errorlevel 1 exit /b 1
+          if not defined WindowsSdkDir exit /b 1
           where cl.exe
           if errorlevel 1 exit /b 1
           call npm.cmd pack
+          exit /b %errorlevel%
           "@ | Set-Content $script -Encoding ascii
           & $env:ComSpec /d /c $script
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

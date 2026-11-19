@@ -52,7 +52,7 @@ The bundled skills cover adding a variable, splitting an action, and deriving a 
 ## Build a release
 
 Build the tarball on the target platform with Git, Node.js 24 LTS, GraalVM Community for JDK 25, and Maven.
-The Windows build uses x64 Visual Studio 2022 Build Tools and the Windows 11 SDK.
+The Windows build uses x64 Visual Studio Build Tools 17.13.2 or later and the Windows 11 SDK.
 
 ```sh
 npm install
