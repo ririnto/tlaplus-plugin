@@ -77,6 +77,10 @@ class InstalledPackageIT : FunSpec({
             ("states generated" in success(client.result(check)).path("stdout").asString()) shouldBe true
             ("Running Random Simulation" in success(client.result(smoke)).path("stdout").asString()) shouldBe true
             success(client.result(explore), hasBehavior = true).path("behavior").asString().contains("STATE_1 == ") shouldBe true
+            val callbackThreads = Regex("MCP tool (\\S+) virtualThread=(true|false)")
+                .findAll(client.diagnostics()).map { it.groupValues[1] to it.groupValues[2] }.toList()
+            callbackThreads.sortedBy { it.first } shouldBe listOf(SANY, CHECK, SMOKE, EXPLORE).sorted().map { it to "true" }
+            println("Native MCP callbacks ran on virtual threads: ${callbackThreads.map { it.first }.sorted().joinToString()}")
 
             val broken = client.tool(SANY, mapOf("fileName" to Path("examples/Broken.tla").absolutePathString()))
             val sanyFailure = execution(broken, failed = true)
@@ -305,6 +309,7 @@ private class WireClient(root: Path, launch: Launch) : AutoCloseable {
         if (launch == Launch.NPM && !isWindows) environment["npm_config_script_shell"] = "/bin/sh"
         for (name in listOf("TMPDIR", "TEMP", "TMP")) builder.environment()[name] = runtime.toString()
         builder.environment()["SPRING_MAIN_BANNER_MODE"] = "console"
+        builder.environment()["LOGGING_LEVEL_IO_GITHUB_RIRINTO_TLAPLUS"] = "DEBUG"
         process = builder.start()
         writer = process.outputWriter(Charsets.UTF_8)
         reader = Thread.startVirtualThread {
@@ -337,6 +342,8 @@ private class WireClient(root: Path, launch: Launch) : AutoCloseable {
     fun requestDirectories(): List<Path> = Files.list(runtime).use { paths ->
         paths.filter { it.fileName.toString().startsWith("tlaplus-plugin-") }.toList()
     }
+
+    fun diagnostics(): String = stderr.readText()
 
     fun startTool(tool: String, arguments: Map<String, Any?>): String =
         send("tools/call", mapOf("name" to tool, "arguments" to arguments))

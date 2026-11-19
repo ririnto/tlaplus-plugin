@@ -16,10 +16,11 @@ import java.nio.file.StandardOpenOption.WRITE
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import java.util.concurrent.locks.ReentrantLock
 import org.graalvm.nativeimage.ProcessProperties
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
-import reactor.core.publisher.Mono
-import reactor.core.scheduler.Schedulers
+import kotlin.concurrent.withLock
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.deleteRecursively
 
@@ -53,16 +54,34 @@ internal data class Execution(
 
 @Component
 internal class TlaRunner {
-    private val requests = Executors.newThreadPerTaskExecutor(Thread.ofPlatform().name("tla-worker-", 0).factory())
-    private val scheduler = Schedulers.fromExecutorService(requests, "tla-worker")
+    private val logger = LoggerFactory.getLogger(TlaRunner::class.java)
+    private val lifecycleLock = ReentrantLock()
+    private val idle = lifecycleLock.newCondition()
+    private val activeRequests = mutableSetOf<Thread>()
+    private var closing = false
 
-    fun run(tool: Tool, input: ToolInput): Mono<Execution> =
-        Mono.fromCallable { execute(tool, input) }.subscribeOn(scheduler)
+    fun run(tool: Tool, input: ToolInput): Execution {
+        val thread = Thread.currentThread()
+        lifecycleLock.withLock {
+            check(!closing) { "The server is closing" }
+            activeRequests.add(thread)
+        }
+        try {
+            logger.debug("MCP tool {} virtualThread={}", tool.toolName, thread.isVirtual)
+            return execute(tool, input)
+        } finally {
+            lifecycleLock.withLock {
+                activeRequests.remove(thread)
+                if (activeRequests.isEmpty()) idle.signalAll()
+            }
+        }
+    }
 
     @PreDestroy
-    fun close() {
-        scheduler.dispose()
-        requests.close()
+    fun close() = lifecycleLock.withLock {
+        closing = true
+        activeRequests.forEach(Thread::interrupt)
+        while (activeRequests.isNotEmpty()) idle.awaitUninterruptibly()
     }
 
     @OptIn(ExperimentalPathApi::class)

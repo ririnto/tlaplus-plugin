@@ -1,18 +1,17 @@
 package io.github.ririnto.tlaplus
 
 import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper
-import io.modelcontextprotocol.server.McpServerFeatures.AsyncResourceSpecification
-import io.modelcontextprotocol.server.McpServerFeatures.AsyncToolSpecification
+import io.modelcontextprotocol.server.McpServerFeatures.SyncResourceSpecification
+import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification
 import io.modelcontextprotocol.spec.McpSchema
 import io.modelcontextprotocol.spec.McpSchema.ReadResourceResult
 import io.modelcontextprotocol.spec.McpSchema.Resource
 import io.modelcontextprotocol.spec.McpSchema.TextResourceContents
-import org.springframework.ai.mcp.customizer.McpAsyncServerCustomizer
+import org.springframework.ai.mcp.customizer.McpSyncServerCustomizer
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
-import reactor.core.publisher.Mono
 import tools.jackson.databind.json.JsonMapper
 
 private val protocolOutput = System.out
@@ -20,27 +19,25 @@ private val protocolOutput = System.out
 @SpringBootApplication(proxyBeanMethods = false)
 internal class Server {
     @Bean
-    fun tools(tools: TlaTools): List<AsyncToolSpecification> =
+    fun tools(tools: TlaTools): List<SyncToolSpecification> =
         Tool.entries.map { tool ->
             val declaration = McpSchema.Tool.builder(tool.toolName, tool.inputSchema())
                 .description(tool.description)
                 .build()
-            AsyncToolSpecification.builder().tool(declaration).callHandler { _, request ->
+            SyncToolSpecification.builder().tool(declaration).callHandler { _, request ->
                 tools.execute(tool, request)
             }.build()
         }
 
     @Bean
-    fun knowledge(): List<AsyncResourceSpecification> =
+    fun knowledge(): List<SyncResourceSpecification> =
         knowledgeText("index.txt").lineSequence().filter(String::isNotEmpty).map { name ->
             val uri = "tlaplus://knowledge/$name"
             val mime = "text/markdown"
             val resource = Resource.builder(uri, name).mimeType(mime).build()
-            AsyncResourceSpecification(resource) { _, _ ->
-                Mono.fromCallable {
-                    val content = TextResourceContents.builder(uri, knowledgeText(name)).mimeType(mime).build()
-                    ReadResourceResult.builder(listOf(content)).build()
-                }
+            SyncResourceSpecification(resource) { _, _ ->
+                val content = TextResourceContents.builder(uri, knowledgeText(name)).mimeType(mime).build()
+                ReadResourceResult.builder(listOf(content)).build()
             }
         }.toList()
 
@@ -48,7 +45,7 @@ internal class Server {
     fun stdio(@Qualifier("mcpServerJsonMapper") mapper: JsonMapper) = ContractStdio(JacksonMcpJsonMapper(mapper), protocolOutput)
 
     @Bean
-    fun validation() = McpAsyncServerCustomizer { it.validateToolInputs(false) }
+    fun validation() = McpSyncServerCustomizer { it.validateToolInputs(false) }
 }
 
 private fun knowledgeText(name: String): String =
@@ -61,5 +58,6 @@ fun main(args: Array<String>) {
         return
     }
     System.setOut(System.err)
+    System.setProperty("reactor.schedulers.defaultBoundedElasticOnVirtualThreads", "true")
     runApplication<Server>("--spring.config.location=classpath:/application.properties")
 }
