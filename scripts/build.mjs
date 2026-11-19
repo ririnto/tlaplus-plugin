@@ -1,10 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { chmod, cp, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
-const root = fileURLToPath(new URL("../", import.meta.url));
+import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
+
 const stage = await mkdtemp(path.join(root, ".build-"));
 const dist = path.join(stage, "dist");
 
@@ -16,32 +16,9 @@ function checkout(repo, paths) {
   return cwd;
 }
 
-async function download(url) {
-  const response = await fetch(url, { signal: AbortSignal.timeout(120_000) });
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
-  return Buffer.from(await response.arrayBuffer());
-}
-
-async function writeNotices(inputs) {
-  const packages = new Set();
-  for (const input of Object.keys(inputs)) {
-    const match = input.match(/^(?<directory>.*\bnode_modules\/(?:@[^/]+\/)?[^/]+)/u);
-    if (match) packages.add(match.groups.directory);
-  }
-  const notices = [];
-  for (const directory of [...packages].sort()) {
-    const location = path.join(root, directory);
-    const { name, version } = JSON.parse(await readFile(path.join(location, "package.json"), "utf8"));
-    const files = (await readdir(location)).filter(file => /^(?:licen[sc]e|copying|notice)(?:[.-].*)?$/iu.test(file));
-    if (!files.length) throw new Error(`Missing license for ${name}`);
-    for (const file of files.sort()) {
-      notices.push(`${name} ${version} — ${file}\n${await readFile(path.join(location, file), "utf8")}`);
-    }
-  }
-  await writeFile(path.join(dist, "THIRD-PARTY-NOTICES.txt"), notices.join("\n\n"));
-}
-
 try {
+  await prepareTlaLibrary();
+  runMaven(["package"]);
   const skills = checkout("AgentSkills", ["skills", "LICENSE"]);
   const vscode = checkout("vscode-tlaplus", ["resources/knowledgebase", "LICENSE"]);
   await cp(path.join(skills, "skills"), path.join(stage, "skills"), { recursive: true });
@@ -51,26 +28,25 @@ try {
     }
   }
   await mkdir(dist);
-  execFileSync("sh", [path.join(root, "scripts/link-runtimes.sh"), path.join(dist, "runtimes")], { cwd: stage, stdio: "inherit" });
   await cp(path.join(vscode, "resources/knowledgebase"), path.join(dist, "knowledgebase"), { recursive: true });
   await cp(path.join(vscode, "LICENSE"), path.join(dist, "knowledgebase/LICENSE"));
-  await writeFile(path.join(dist, "tla2tools.jar"), await download("https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar"));
-  await writeFile(path.join(dist, "TLA-LICENSE"), await download("https://raw.githubusercontent.com/tlaplus/tlaplus/v1.7.4/LICENSE"));
+  await cp(path.join(root, "target/tlaplus-server.jar"), path.join(dist, "tlaplus-server.jar"));
+  const tlaLicense = await fetch("https://raw.githubusercontent.com/tlaplus/tlaplus/v1.7.4/LICENSE", {
+    signal: AbortSignal.timeout(30_000)
+  });
+  if (!tlaLicense.ok) throw new Error(`TLA+ license download failed with HTTP ${tlaLicense.status}`);
+  await writeFile(path.join(dist, "TLA-LICENSE"), await tlaLicense.text());
 
-  const output = await build({
+  const { version } = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+  await build({
     absWorkingDir: root,
-    entryPoints: ["src/server.mts"],
+    entryPoints: ["src/launcher.mts"],
     outfile: path.join(dist, "server.mjs"),
     platform: "node",
     target: "node24",
     format: "esm",
-    bundle: true,
-    minify: true,
-    metafile: true,
-    legalComments: "eof",
-    banner: { js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);' }
+    define: { TLA_PLUGIN_VERSION: JSON.stringify(version) }
   });
-  await writeNotices(output.metafile.inputs);
   await chmod(path.join(dist, "server.mjs"), 0o755);
   for (const name of ["dist", "skills"]) {
     await rm(path.join(root, name), { recursive: true, force: true });
