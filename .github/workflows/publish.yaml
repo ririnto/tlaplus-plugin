@@ -1,7 +1,7 @@
 name: Publish package
 on:
   push:
-    tags: ["v*"]
+    tags: ["20*"]
 
 permissions:
   id-token: write
@@ -52,6 +52,10 @@ jobs:
         env:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
       - run: pnpm install --frozen-lockfile
+      - name: Stamp the release version derived from the tag
+        run: |-
+          version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
+          npm version "$version" --no-git-tag-version
       - name: Sync platform package versions
         run: node scripts/sync-optional-deps.mjs
       - name: Build
@@ -109,12 +113,12 @@ jobs:
         with:
           pattern: npm-package-*
           path: packages
-      - name: Verify the tag matches the package version
+      - name: Verify the tag matches the packed artifacts
         run: |-
-          version=${GITHUB_REF_NAME#v}
-          package=$(node -p "require('./package.json').version")
-          if [ "$version" != "$package" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match package version $package"
+          version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
+          main=$(find packages -name "ririnto-tlaplus-plugin-${version}.tgz" -print -quit)
+          if [ -z "$main" ]; then
+            echo "No main package tarball for version ${version} derived from tag ${GITHUB_REF_NAME}"
             exit 1
           fi
       - name: Publish every platform package, then the main package
@@ -122,7 +126,7 @@ jobs:
           find packages -name '*.tgz' ! -name 'ririnto-tlaplus-plugin-[0-9]*' -print0 | xargs -0 -n1 npm publish
           main=$(find packages -name 'ririnto-tlaplus-plugin-[0-9]*.tgz' -print -quit)
           npm publish "$main"
-      - name: Create the GitHub release named after the tag
+      - name: Create the GitHub release carrying the published npm tarballs
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes $(find packages -name '*.tgz')

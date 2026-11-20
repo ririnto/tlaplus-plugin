@@ -6,13 +6,13 @@ import { fileURLToPath } from "node:url";
 import { sync } from "cross-spawn";
 
 import { readPackageManifest } from "./manifest.mjs";
+import { tlaVersion } from "./tla-version.mjs";
 
 /**
  * The repository root used by Maven and packaging commands.
  */
 export const root = fileURLToPath(new URL("../", import.meta.url));
 const { version } = await readPackageManifest(path.join(root, "package.json"));
-const tlaVersion = "1.7.4";
 const tlaRelease = `https://github.com/tlaplus/tlaplus/releases/download/v${tlaVersion}/tla2tools.jar`;
 
 /**

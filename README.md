@@ -112,12 +112,11 @@ The tarball includes upstream licenses and works offline after installation.
 `npm pack` runs the Kotlin contract tests before building the tarball.
 GitHub Actions builds, tests, and publishes the main package plus one platform package per target platform through trusted publishing.
 
-Version the plugin by UTC build date and build number, for example `2026.11.20.1`.
-The package version combines the TLA+ tools version and the plugin version, for example `1.7.4-2026.11.20.1`.
-Write the date and build number as numeric prerelease identifiers without leading zeros.
-The MCP server reports the same version in its initialize response.
-Editor plugin manifests and the platform packages are stamped with the package version at build time.
-Publish a release by pushing a Git tag named `v` plus the package version, for example `v1.7.4-2026.11.20.1`.
-The publish workflow rejects a tag that does not match `package.json`, publishes the main package and the four platform packages to npm, and creates a GitHub release named after the tag.
+Version the plugin by UTC build date and a two-digit build number, for example `2026.11.20.01`.
+Publish a release by pushing a Git tag with the plugin version, for example `2026.11.20.01`.
+The publish workflow derives the package version from the tag by prepending the TLA+ tools version, for example `1.7.4-2026.11.20.1`, and stamps `package.json`, the editor plugin manifests, and the platform packages with it.
+npm requires numeric prerelease identifiers without leading zeros, so the build number loses its leading zero in the package version while the tag and the GitHub release keep it.
+The MCP server reports the package version in its initialize response.
+The workflow publishes the main package and the four platform packages to npm, then creates a GitHub release named after the tag that carries the exact tarballs published to npm.
 
 [AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [Spring AI MCP Server Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html)
