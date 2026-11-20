@@ -83,12 +83,6 @@ jobs:
         run: npm pack --ignore-scripts
       - name: Pack the platform package
         run: npm pack ./npm
-      - name: Recompress the tarballs with maximum deflate
-        shell: bash
-        run: |-
-          for tarball in *.tgz; do
-            gunzip -c "$tarball" | gzip -9n > "$tarball.max" && mv "$tarball.max" "$tarball"
-          done
       - name: Test the packed artifacts without Java on the consumer PATH
         shell: bash
         run: |-
