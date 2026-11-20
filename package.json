@@ -8,8 +8,6 @@
     "type": "git",
     "url": "git+https://github.com/ririnto/tlaplus-plugin.git"
   },
-  "type": "module",
-  "packageManager": "pnpm@12.21.0",
   "bin": {
     "tlaplus-plugin": "dist/server.mjs"
   },
@@ -21,13 +19,26 @@
     ".codex-plugin/",
     ".cursor-plugin/"
   ],
-  "engines": {
-    "node": ">=24"
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
     "prepack": "npm run build",
-    "test": "tsc && node scripts/test-consumer.mjs"
+    "test": "tsc && node scripts/test-consumer.mjs",
+    "check:ultracite": "ultracite check --type-aware",
+    "fix:ultracite": "ultracite fix"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "cross-spawn": "catalog:",
+    "esbuild": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:",
+    "ultracite": "catalog:"
   },
   "optionalDependencies": {
     "@ririnto/tlaplus-plugin-darwin-arm64": "1.7.4-2026.11.19.1",
@@ -35,18 +46,8 @@
     "@ririnto/tlaplus-plugin-linux-x64": "1.7.4-2026.11.19.1",
     "@ririnto/tlaplus-plugin-win32-x64": "1.7.4-2026.11.19.1"
   },
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "cross-spawn": "catalog:",
-    "esbuild": "catalog:",
-    "typescript": "catalog:"
+  "engines": {
+    "node": ">=24"
   },
-  "publishConfig": {
-    "access": "public"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  }
+  "packageManager": "pnpm@12.21.0"
 }

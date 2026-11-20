@@ -11,7 +11,9 @@ const localServer = fileURLToPath(new URL(executable, new URL("../native/", impo
 
 let serverPath: string;
 try {
-  serverPath = createRequire(import.meta.url).resolve(`@ririnto/tlaplus-plugin-${platform}/${executable}`);
+  serverPath = createRequire(import.meta.url).resolve(
+    `@ririnto/tlaplus-plugin-${platform}/${executable}`,
+  );
 } catch {
   serverPath = localServer;
 }
@@ -19,7 +21,9 @@ try {
 const server = spawn(serverPath, [`-Djava.io.tmpdir=${tmpdir()}`], { stdio: "inherit" });
 
 const signalNames = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
-const forward = (signal: NodeJS.Signals) => server.kill(signal);
+const forward = (signal: NodeJS.Signals) => {
+  server.kill(signal);
+};
 for (const name of signalNames) {
   process.on(name, forward);
 }
@@ -27,7 +31,7 @@ for (const name of signalNames) {
 server.once("error", (error) => {
   console.error(
     `Cannot start the TLA+ server for ${platform}. ` +
-      `Install @ririnto/tlaplus-plugin-${platform} or build it with npm run build. ${error.message}`
+      `Install @ririnto/tlaplus-plugin-${platform} or build it with npm run build. ${error.message}`,
   );
 });
 server.once("close", (code, signal) => {

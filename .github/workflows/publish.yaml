@@ -1,10 +1,11 @@
 name: Publish package
 on:
-  workflow_dispatch:
+  push:
+    tags: ["v*"]
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   package:
@@ -33,7 +34,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: graalvm-community
-          java-version: '25'
+          java-version: "25"
           check-latest: true
           cache: maven
       - name: Check native build tools
@@ -89,7 +90,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: npm-package-${{ matrix.platform }}
-          path: '*.tgz'
+          path: "*.tgz"
           if-no-files-found: error
           compression-level: 0
           retention-days: 3
@@ -98,6 +99,7 @@ jobs:
     needs: package
     runs-on: ubuntu
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -107,8 +109,20 @@ jobs:
         with:
           pattern: npm-package-*
           path: packages
+      - name: Verify the tag matches the package version
+        run: |-
+          version=${GITHUB_REF_NAME#v}
+          package=$(node -p "require('./package.json').version")
+          if [ "$version" != "$package" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $package"
+            exit 1
+          fi
       - name: Publish every platform package, then the main package
         run: |-
           find packages -name '*.tgz' ! -name 'ririnto-tlaplus-plugin-[0-9]*' -print0 | xargs -0 -n1 npm publish
           main=$(find packages -name 'ririnto-tlaplus-plugin-[0-9]*.tgz' -print -quit)
           npm publish "$main"
+      - name: Create the GitHub release named after the tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes

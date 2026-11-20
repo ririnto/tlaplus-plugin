@@ -1,31 +1,54 @@
+/// <reference path="./cross-spawn.d.ts" />
+
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import spawn from "cross-spawn";
+import { sync } from "cross-spawn";
 
+import { readPackageManifest } from "./manifest.mjs";
+
+/**
+ * The repository root used by Maven and packaging commands.
+ */
 export const root = fileURLToPath(new URL("../", import.meta.url));
-const { version } = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+const { version } = await readPackageManifest(path.join(root, "package.json"));
 const tlaVersion = "1.7.4";
 const tlaRelease = `https://github.com/tlaplus/tlaplus/releases/download/v${tlaVersion}/tla2tools.jar`;
 
-export function runMaven(args) {
-  const result = spawn.sync("mvn", ["-B", "-ntp", `-Drevision=${version}`, ...args], { cwd: root, stdio: "inherit" });
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    throw new Error(`Maven exited with ${result.signal || result.status}`);
+/**
+ * Runs Maven from the repository root with the package version.
+ * @param {readonly string[]} args Maven goals and additional command-line options.
+ */
+export const runMaven = (args) => {
+  const { error, status, signal } = sync("mvn", ["-B", "-ntp", `-Drevision=${version}`, ...args], {
+    cwd: root,
+    stdio: "inherit",
+  });
+  if (error !== null) {
+    throw error;
   }
-}
+  if (status !== 0) {
+    throw new Error(`Maven exited with ${signal ?? status}`);
+  }
+};
 
-export async function prepareTlaLibrary() {
+/**
+ * Installs the TLA+ tools JAR into the local Maven repository.
+ */
+export const prepareTlaLibrary = async () => {
   const target = path.join(root, "target");
   const jar = path.join(target, `tla2tools-${tlaVersion}.jar`);
   let bytes;
   try {
     bytes = await readFile(jar);
   } catch (error) {
-    if (error.code !== "ENOENT") throw error;
+    if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
+      throw error;
+    }
     const response = await fetch(tlaRelease, { signal: AbortSignal.timeout(120_000) });
-    if (!response.ok) throw new Error(`TLA+ download failed with HTTP ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`TLA+ download failed with HTTP ${response.status}`, { cause: error });
+    }
     bytes = Buffer.from(await response.arrayBuffer());
   }
   await mkdir(target, { recursive: true });
@@ -36,6 +59,6 @@ export async function prepareTlaLibrary() {
     "-DgroupId=org.lamport",
     "-DartifactId=tla2tools",
     `-Dversion=${tlaVersion}`,
-    "-Dpackaging=jar"
+    "-Dpackaging=jar",
   ]);
-}
+};

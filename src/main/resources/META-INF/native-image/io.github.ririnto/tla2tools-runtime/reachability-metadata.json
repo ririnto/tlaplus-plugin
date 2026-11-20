@@ -9,7 +9,11 @@
     { "type": "tlc2.module.Sequences", "allDeclaredMethods": true, "allDeclaredFields": true },
     { "type": "tlc2.module.Strings", "allDeclaredMethods": true, "allDeclaredFields": true },
     { "type": "tlc2.module.TLC", "allDeclaredMethods": true, "allDeclaredFields": true },
-    { "type": "tlc2.module.TransitiveClosure", "allDeclaredMethods": true, "allDeclaredFields": true },
+    {
+      "type": "tlc2.module.TransitiveClosure",
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
     { "type": "tlc2.tool.fp.LSBDiskFPSet", "allDeclaredConstructors": true },
     { "type": "tlc2.tool.fp.MSBDiskFPSet", "allDeclaredConstructors": true },
     { "type": "tlc2.tool.fp.OffHeapDiskFPSet", "allDeclaredConstructors": true },

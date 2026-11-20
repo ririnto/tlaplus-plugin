@@ -9,9 +9,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "fileName"
-      ],
+      "required": ["fileName"],
       "$schema": "http://json-schema.org/draft-07/schema#"
     },
     "execution": {
@@ -43,9 +41,7 @@
           }
         }
       },
-      "required": [
-        "fileName"
-      ],
+      "required": ["fileName"],
       "$schema": "http://json-schema.org/draft-07/schema#"
     },
     "execution": {
@@ -77,9 +73,7 @@
           }
         }
       },
-      "required": [
-        "fileName"
-      ],
+      "required": ["fileName"],
       "$schema": "http://json-schema.org/draft-07/schema#"
     },
     "execution": {
@@ -116,9 +110,7 @@
           "maximum": 9007199254740991
         }
       },
-      "required": [
-        "fileName"
-      ],
+      "required": ["fileName"],
       "$schema": "http://json-schema.org/draft-07/schema#"
     },
     "execution": {

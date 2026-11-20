@@ -68,11 +68,11 @@ For Cursor, copy the manifest directories into `~/.cursor/plugins/local/tlaplus-
 
 ## Tools and references
 
-| MCP tool | Operation |
-| --- | --- |
-| `tlaplus_mcp_sany_parse` | Parse a module and check its semantics. |
-| `tlaplus_mcp_tlc_check` | Exhaustively check a model and its configured properties. |
-| `tlaplus_mcp_tlc_smoke` | Run one bounded random simulation. |
+| MCP tool                  | Operation                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| `tlaplus_mcp_sany_parse`  | Parse a module and check its semantics.                                               |
+| `tlaplus_mcp_tlc_check`   | Exhaustively check a model and its configured properties.                             |
+| `tlaplus_mcp_tlc_smoke`   | Run one bounded random simulation.                                                    |
 | `tlaplus_mcp_tlc_explore` | Return one bounded behavior, including its initial state and ordered variable values. |
 
 Pass an absolute `fileName`.
@@ -112,9 +112,12 @@ The tarball includes upstream licenses and works offline after installation.
 `npm pack` runs the Kotlin contract tests before building the tarball.
 GitHub Actions builds, tests, and publishes the main package plus one platform package per target platform through trusted publishing.
 
-Set the release version in `package.json` using the TLA+ tools version, UTC build date, and build number, for example `1.7.4-2026.11.19.1`.
+Version the plugin by UTC build date and build number, for example `2026.11.20.1`.
+The package version combines the TLA+ tools version and the plugin version, for example `1.7.4-2026.11.20.1`.
 Write the date and build number as numeric prerelease identifiers without leading zeros.
 The MCP server reports the same version in its initialize response.
 Editor plugin manifests and the platform packages are stamped with the package version at build time.
+Publish a release by pushing a Git tag named `v` plus the package version, for example `v1.7.4-2026.11.20.1`.
+The publish workflow rejects a tag that does not match `package.json`, publishes the main package and the four platform packages to npm, and creates a GitHub release named after the tag.
 
 [AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [Spring AI MCP Server Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html)

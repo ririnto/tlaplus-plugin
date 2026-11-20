@@ -11,10 +11,7 @@
     "tlaplus": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "@ririnto/tlaplus-plugin"
-      ]
+      "args": ["-y", "@ririnto/tlaplus-plugin"]
     }
   }
 }
