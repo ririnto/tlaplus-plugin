@@ -1,0 +1,14 @@
+{
+  "config": {
+    "code-block-style": {
+      "style": "fenced"
+    },
+    "line-length": false,
+    "no-emphasis-as-heading": true,
+    "table-column-style": {
+      "style": "compact"
+    }
+  },
+  "gitignore": true,
+  "globs": ["**/*.md"]
+}

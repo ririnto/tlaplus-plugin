@@ -8,5 +8,10 @@
     "skipLibCheck": true,
     "allowJs": true
   },
-  "include": ["src/*.mts", "scripts/*.mjs", "oxlint.config.ts"]
+  "include": [
+    "src/*.mts",
+    "scripts/*.mjs",
+    "oxfmt.config.ts",
+    "oxlint.config.ts"
+  ]
 }
