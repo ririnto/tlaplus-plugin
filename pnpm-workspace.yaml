@@ -8,5 +8,5 @@ catalog:
   typescript: ^7.0.2
   ultracite: ^8.2.0
 
-onlyBuiltDependencies:
-  - esbuild
+allowBuilds:
+  esbuild: true
