@@ -1,7 +1,8 @@
 name: Publish package
 on:
   push:
-    tags: ["20*"]
+    tags:
+      - "20*"
 
 permissions:
   id-token: write
