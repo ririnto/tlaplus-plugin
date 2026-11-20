@@ -9,6 +9,7 @@
     "url": "git+https://github.com/ririnto/tlaplus-plugin.git"
   },
   "type": "module",
+  "packageManager": "pnpm@12.21.0",
   "bin": {
     "tlaplus-plugin": "dist/server.mjs"
   },
@@ -35,12 +36,17 @@
     "@ririnto/tlaplus-plugin-win32-x64": "1.7.4-2026.11.19.1"
   },
   "devDependencies": {
-    "@types/node": "24.19.2",
-    "cross-spawn": "7.0.6",
-    "esbuild": "0.28.2",
-    "typescript": "7.0.2"
+    "@types/node": "catalog:",
+    "cross-spawn": "catalog:",
+    "esbuild": "catalog:",
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

@@ -90,11 +90,14 @@ Build the tarball on the target platform with Git, Node.js 24 LTS, GraalVM Commu
 The Windows build uses x64 Visual Studio Build Tools 17.13.2 or later and the Windows 11 SDK.
 
 ```sh
-npm install
+pnpm install
 npm pack
 npm pack ./npm
 npm test
 ```
+
+Dependencies install with pnpm from the version catalog in `pnpm-workspace.yaml`.
+Packing, the consumer test, and registry publishing stay on the npm command because trusted publishing authenticates through the npm CLI.
 
 `npm pack` builds the main package.
 `npm pack ./npm` builds the platform package from the `npm/` directory that the build creates.
