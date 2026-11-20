@@ -28,6 +28,12 @@
     "prepack": "npm run build",
     "test": "tsc && node scripts/test-consumer.mjs"
   },
+  "optionalDependencies": {
+    "@ririnto/tlaplus-plugin-darwin-arm64": "1.7.4-2026.11.19.1",
+    "@ririnto/tlaplus-plugin-linux-arm64": "1.7.4-2026.11.19.1",
+    "@ririnto/tlaplus-plugin-linux-x64": "1.7.4-2026.11.19.1",
+    "@ririnto/tlaplus-plugin-win32-x64": "1.7.4-2026.11.19.1"
+  },
   "devDependencies": {
     "@types/node": "24.19.2",
     "cross-spawn": "7.0.6",

@@ -10,11 +10,11 @@
   "mcpServers": {
     "tlaplus": {
       "type": "stdio",
-      "command": "node",
+      "command": "npx",
       "args": [
-        "./dist/server.mjs"
-      ],
-      "cwd": "./"
+        "-y",
+        "@ririnto/tlaplus-plugin"
+      ]
     }
   }
 }

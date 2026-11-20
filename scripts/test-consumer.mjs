@@ -10,12 +10,19 @@ if (!npm) throw new Error("Run this check with npm test");
 const directory = await mkdtemp(path.join(tmpdir(), "tlaplus-consumer-"));
 const consumer = path.join(directory, "consumer project");
 try {
-  let tarball = process.argv[2] && path.resolve(process.argv[2]);
-  if (!tarball) {
+  let mainTarball = process.argv[2] && path.resolve(process.argv[2]);
+  let platformTarball = process.argv[3] && path.resolve(process.argv[3]);
+  if (!mainTarball || !platformTarball) {
     execFileSync(process.execPath, [npm, "pack", "--pack-destination", directory], { cwd: root, stdio: "inherit" });
-    const files = (await readdir(directory)).filter(name => name.endsWith(".tgz"));
-    if (files.length !== 1) throw new Error("Expected one npm tarball");
-    tarball = path.join(directory, files[0]);
+    execFileSync(process.execPath, [npm, "pack", "./npm", "--pack-destination", directory], { cwd: root, stdio: "inherit" });
+  }
+  const packed = (await readdir(directory)).filter(name => name.endsWith(".tgz"));
+  const mainName = packed.find(name => /^ririnto-tlaplus-plugin-[0-9]/.test(name));
+  const platformName = packed.find(name => /^ririnto-tlaplus-plugin-(?:darwin|linux|win32)-/.test(name));
+  mainTarball ??= mainName && path.join(directory, mainName);
+  platformTarball ??= platformName && path.join(directory, platformName);
+  if (!mainTarball || !platformTarball) {
+    throw new Error("Expected one main tarball and one platform tarball");
   }
   await mkdir(consumer);
   const bin = path.join(directory, "bin");
@@ -31,7 +38,7 @@ try {
   }
   console.log("Consumer environment has no Java executable or JAVA_HOME");
   await writeFile(path.join(consumer, "package.json"), JSON.stringify({ private: true }));
-  execFileSync(node, [npm, "install", "--offline", "--no-audit", "--no-fund", tarball], {
+  execFileSync(node, [npm, "install", "--offline", "--no-audit", "--no-fund", mainTarball, platformTarball], {
     cwd: consumer,
     env,
     stdio: "inherit"

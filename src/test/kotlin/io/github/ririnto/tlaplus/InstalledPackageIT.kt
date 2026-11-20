@@ -290,15 +290,33 @@ private class WireClient(root: Path, launch: Launch) : AutoCloseable {
         val node = checkNotNull(System.getProperty("consumer.node"))
         val dist = consumer.resolve("node_modules/@ririnto/tlaplus-plugin/dist")
         val command = when (launch) {
-            Launch.NPM -> listOf(node, checkNotNull(System.getProperty("consumer.npm")), "exec", "--offline", "--", "tlaplus-plugin")
+            Launch.NPM -> listOf(
+                node,
+                Path(checkNotNull(System.getProperty("consumer.npm"))).parent.resolve("npx-cli.js").toString(),
+                "--offline",
+                "@ririnto/tlaplus-plugin"
+            )
             Launch.WRAPPER -> listOf(node, dist.resolve("server.mjs").toString())
             Launch.STANDALONE -> {
+                val os = System.getProperty("os.name").lowercase()
+                val platform = "${when {
+                    os.startsWith("windows") -> "win32"
+                    os.startsWith("mac") -> "darwin"
+                    else -> "linux"
+                }}-${when (System.getProperty("os.arch")) {
+                    "aarch64" -> "arm64"
+                    else -> "x64"
+                }}"
                 val name =
                     when (ToolInput.isWindows) {
                         true -> "tlaplus-server.exe"
                         false -> "tlaplus-server"
                     }
-                val binary = Files.copy(dist.resolve(name), root.resolve(name), COPY_ATTRIBUTES)
+                val binary = Files.copy(
+                    consumer.resolve("node_modules/@ririnto/tlaplus-plugin-$platform/$name"),
+                    root.resolve(name),
+                    COPY_ATTRIBUTES
+                )
                 listOf(binary.toString(), "-Djava.io.tmpdir=$runtime")
             }
         }

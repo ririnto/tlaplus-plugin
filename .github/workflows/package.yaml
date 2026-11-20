@@ -14,13 +14,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-24.04
+          - os: ubuntu
             platform: linux-x64
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-arm
             platform: linux-arm64
-          - os: macos-15
+          - os: macos
             platform: darwin-arm64
-          - os: windows-2025
+          - os: windows
             platform: win32-x64
     runs-on: ${{ matrix.os }}
     steps:
@@ -33,9 +33,15 @@ jobs:
           distribution: graalvm-community
           java-version: '25'
           check-latest: true
+          cache: maven
+      - name: Cache npm downloads
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package.json') }}
       - name: Check native build tools
         shell: pwsh
-        run: |
+        run: |-
           $platform = node -p 'process.platform + "-" + process.arch'
           if ($LASTEXITCODE -ne 0 -or $platform -ne $env:EXPECTED_PLATFORM) {
             throw "Runner platform does not match $env:EXPECTED_PLATFORM"
@@ -48,13 +54,13 @@ jobs:
         env:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
       - run: npm install
-      - name: Build and pack
+      - name: Build and pack the main package
         if: runner.os != 'Windows'
         run: npm pack
-      - name: Build and pack with Visual Studio x64 tools
+      - name: Build and pack the main package with Visual Studio x64 tools
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
+        run: |-
           $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
           $install = & $vswhere -latest -version '[17.13.2,)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if (-not $install) { throw 'Visual Studio x64 Build Tools 17.13.2 or later are required' }
@@ -71,9 +77,20 @@ jobs:
           "@ | Set-Content $script -Encoding ascii
           & $env:ComSpec /d /c $script
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Test the packed artifact without Java on the consumer PATH
+      - name: Pack the platform package
+        run: npm pack ./npm
+      - name: Recompress the tarballs with maximum deflate
         shell: bash
-        run: npm test -- ./*.tgz
+        run: |-
+          for tarball in *.tgz; do
+            gunzip -c "$tarball" | gzip -9n > "$tarball.max" && mv "$tarball.max" "$tarball"
+          done
+      - name: Test the packed artifacts without Java on the consumer PATH
+        shell: bash
+        run: |-
+          main=$(find . -maxdepth 1 -name 'ririnto-tlaplus-plugin-[0-9]*.tgz' -print -quit)
+          platform=$(find . -maxdepth 1 -name "ririnto-tlaplus-plugin-${{ matrix.platform }}-*.tgz" -print -quit)
+          npm test -- "$main" "$platform"
       - uses: actions/upload-artifact@v7
         with:
           name: npm-package-${{ matrix.platform }}

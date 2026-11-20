@@ -5,23 +5,58 @@ The npm package includes a native Spring AI stdio server with the official TLA+ 
 
 ## Use the package
 
-Install Node.js 24 or later to use the npm command.
-Choose the tarball for Linux x64, Linux ARM64, macOS ARM64, or Windows x64 and install it in your project.
-Start the server with `npm exec -- tlaplus-plugin`.
-After registry publication, the package name is `@ririnto/tlaplus-plugin`.
+Install Node.js 24 or later.
+Install `@ririnto/tlaplus-plugin` from the npm registry.
+The package pulls the native server binary for the current platform through `optionalDependencies`, so Linux x64, Linux ARM64, macOS ARM64, and Windows x64 all install with one command.
 
 ```sh
-npm install /path/to/ririnto-tlaplus-plugin-1.7.4-2026.11.19.1.tgz
+npm install @ririnto/tlaplus-plugin
 npm exec -- tlaplus-plugin
 ```
 
-For a general MCP client, set `command` to `node` and pass the absolute path to `node_modules/@ririnto/tlaplus-plugin/dist/server.mjs` as its only argument.
-You can also use `dist/tlaplus-server` directly as the command, or `dist/tlaplus-server.exe` on Windows.
+`npx -y @ririnto/tlaplus-plugin` starts the server without a local install.
+
+### Register the MCP server
+
+Every command below runs the npm release, so the host fetches the package from the registry at startup.
+
+Claude Code:
+
+```sh
+claude mcp add tlaplus -- npx -y @ririnto/tlaplus-plugin
+```
+
+Codex, in `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.tlaplus]
+command = "npx"
+args = ["-y", "@ririnto/tlaplus-plugin"]
+```
+
+Cursor, in `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "tlaplus": {
+      "command": "npx",
+      "args": ["-y", "@ririnto/tlaplus-plugin"]
+    }
+  }
+}
+```
+
+For a general MCP client, set `command` to `npx` with the arguments `-y @ririnto/tlaplus-plugin`.
+In an npm project you can instead set `command` to `node` with `node_modules/@ririnto/tlaplus-plugin/dist/server.mjs`, or run the platform binary directly from `node_modules/@ririnto/tlaplus-plugin-<platform>/tlaplus-server`.
 The executable includes the TLA+ standard modules and the knowledge base.
 The server writes JSON-RPC to stdout and its own diagnostics to stderr.
 Only run trusted specifications and worker options.
 
-Claude Code, Codex, and Cursor manifests are included. Point your host at the installed package directory or the extracted tarball. For example, from the npm project:
+### Install the plugin
+
+Claude Code, Codex, and Cursor manifests are included and start the npm release.
+Point your host at the installed package directory. For example, from the npm project:
 
 ```sh
 claude --plugin-dir ./node_modules/@ririnto/tlaplus-plugin
@@ -29,7 +64,7 @@ codex plugin marketplace add ./node_modules/@ririnto/tlaplus-plugin
 codex plugin add tlaplus-plugin@tlaplus-plugin
 ```
 
-For Cursor, extract the tarball's `package/` contents into `~/.cursor/plugins/local/tlaplus-plugin/` and reload the window. If you use a Git checkout directly, build it first.
+For Cursor, copy the manifest directories into `~/.cursor/plugins/local/tlaplus-plugin/` and reload the window. If you use a Git checkout directly, build it first.
 
 ## Tools and references
 
@@ -57,8 +92,13 @@ The Windows build uses x64 Visual Studio Build Tools 17.13.2 or later and the Wi
 ```sh
 npm install
 npm pack
-npm test -- ./ririnto-tlaplus-plugin-1.7.4-2026.11.19.1.tgz
+npm pack ./npm
+npm test
 ```
+
+`npm pack` builds the main package.
+`npm pack ./npm` builds the platform package from the `npm/` directory that the build creates.
+`npm test` packs both tarballs, installs them in a temporary project with Java removed from the consumer's `PATH`, and checks the shipped stdio entry point with Kotest.
 
 The build fetches the default branches of AgentSkills and vscode-tlaplus.
 It downloads the TLA+ tools JAR from the official `v1.7.4` GitHub release and installs it as a local Maven dependency.
@@ -67,12 +107,11 @@ Each tool call starts a worker process from the same executable to isolate TLA+ 
 The tarball includes upstream licenses and works offline after installation.
 
 `npm pack` runs the Kotlin contract tests before building the tarball.
-`npm test` installs the tarball in a temporary project with Java removed from the consumer's `PATH` and checks the shipped stdio entry point with Kotest.
-GitHub Actions builds and tests a separate tarball on each target platform.
+GitHub Actions builds, tests, and publishes the main package plus one platform package per target platform through trusted publishing.
 
 Set the release version in `package.json` using the TLA+ tools version, UTC build date, and build number, for example `1.7.4-2026.11.19.1`.
 Write the date and build number as numeric prerelease identifiers without leading zeros.
 The MCP server reports the same version in its initialize response.
-Editor plugin manifests use `yyyy.MM.dd.seq`.
+Editor plugin manifests and the platform packages are stamped with the package version at build time.
 
 [AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [Spring AI MCP Server Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html)
