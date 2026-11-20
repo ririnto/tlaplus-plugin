@@ -14,7 +14,9 @@ import {
 import path from "node:path";
 
 import { build } from "esbuild";
+import { format } from "oxfmt";
 
+import formatterConfig from "../oxfmt.config.ts";
 import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
 import { readManifest, readPackageManifest } from "./manifest.mjs";
 
@@ -169,7 +171,15 @@ try {
       const file = path.join(root, manifestName);
       const pluginManifest = await readManifest(file);
       pluginManifest.version = manifest.version;
-      await writeFile(file, `${JSON.stringify(pluginManifest, null, 2)}\n`);
+      const { code, errors } = await format(
+        file,
+        JSON.stringify(pluginManifest, null, 2),
+        formatterConfig
+      );
+      if (errors.length > 0) {
+        throw new Error(`Could not format ${manifestName}`, { cause: errors });
+      }
+      await writeFile(file, code);
     }
   );
   await Array.fromAsync(["dist", "skills", "native", "npm"], async (name) => {

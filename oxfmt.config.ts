@@ -3,12 +3,6 @@ import ultracite from "ultracite/oxfmt";
 
 export default defineConfig({
   ...ultracite,
-  ignorePatterns: [
-    ...(ultracite.ignorePatterns ?? []),
-    "**/*.md",
-    ".claude-plugin/plugin.json",
-    ".codex-plugin/plugin.json",
-    ".cursor-plugin/plugin.json"
-  ],
+  ignorePatterns: [...(ultracite.ignorePatterns ?? []), "**/*.md"],
   trailingComma: "none"
 });
