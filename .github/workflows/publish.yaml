@@ -54,6 +54,7 @@ jobs:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
       - run: pnpm install --frozen-lockfile
       - name: Stamp the release version derived from the tag
+        shell: bash
         run: |-
           version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
           npm version "$version" --no-git-tag-version
