@@ -21,6 +21,14 @@ import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
 import { readManifest, readPackageManifest } from "./manifest.mjs";
 
 const manifest = await readPackageManifest(path.join(root, "package.json"));
+const localGitVariables = new Set(
+  execFileSync("git", ["rev-parse", "--local-env-vars"], { encoding: "utf-8" })
+    .trim()
+    .split(/\s+/u)
+);
+const gitEnvironment = Object.fromEntries(
+  Object.entries(process.env).filter(([name]) => !localGitVariables.has(name))
+);
 const stage = await mkdtemp(path.join(root, ".build-"));
 const dist = path.join(stage, "dist");
 
@@ -30,7 +38,8 @@ const dist = path.join(stage, "dist");
  */
 const checkout = (repo, paths) => {
   const cwd = path.join(stage, repo);
-  execFileSync("git", ["init", "--quiet", cwd]);
+  const options = { cwd, env: gitEnvironment };
+  execFileSync("git", ["init", "--quiet", cwd], { env: gitEnvironment });
   execFileSync(
     "git",
     [
@@ -40,11 +49,13 @@ const checkout = (repo, paths) => {
       `https://github.com/tlaplus/${repo}.git`,
       "HEAD"
     ],
-    { cwd }
+    options
   );
-  execFileSync("git", ["checkout", "--quiet", "FETCH_HEAD", "--", ...paths], {
-    cwd
-  });
+  execFileSync(
+    "git",
+    ["checkout", "--quiet", "FETCH_HEAD", "--", ...paths],
+    options
+  );
   return cwd;
 };
 
