@@ -114,9 +114,9 @@ GitHub Actions builds, tests, and publishes the main package plus one platform p
 
 Version the plugin by UTC build date and a two-digit build number, for example `2026.11.20.01`.
 Publish a release by pushing a Git tag with the plugin version, for example `2026.11.20.01`.
-The publish workflow derives the package version from the tag by prepending the TLA+ tools version, for example `1.7.4-2026.11.20.1`, and stamps `package.json`, the editor plugin manifests, and the platform packages with it.
-npm requires numeric prerelease identifiers without leading zeros, so the build number loses its leading zero in the package version while the tag and the GitHub release keep it.
+The publish workflow derives the package version from the tag by prepending the TLA+ tools version, for example `1.7.4-2026.11.20.01`, and stamps `package.json`, the editor plugin manifests, and the platform packages with it.
+npm cleans the prerelease identifiers when it packs and publishes, so the build number loses its leading zero in the registry while the tag and the GitHub release keep it.
 The MCP server reports the package version in its initialize response.
-The workflow publishes the main package and the four platform packages to npm, then creates a GitHub release named after the tag that carries the exact tarballs published to npm.
+The workflow publishes the main package and the four platform packages to npm on the `latest` dist-tag, then creates a GitHub release named after the tag that carries the exact tarballs published to npm.
 
 [AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [Spring AI MCP Server Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html)

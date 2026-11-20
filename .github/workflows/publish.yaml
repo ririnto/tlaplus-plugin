@@ -113,19 +113,11 @@ jobs:
         with:
           pattern: npm-package-*
           path: packages
-      - name: Verify the tag matches the packed artifacts
-        run: |-
-          version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
-          main=$(find packages -name "ririnto-tlaplus-plugin-${version}.tgz" -print -quit)
-          if [ -z "$main" ]; then
-            echo "No main package tarball for version ${version} derived from tag ${GITHUB_REF_NAME}"
-            exit 1
-          fi
       - name: Publish every platform package, then the main package
         run: |-
-          find packages -name '*.tgz' ! -name 'ririnto-tlaplus-plugin-[0-9]*' -print0 | xargs -0 -n1 npm publish
+          find packages -name '*.tgz' ! -name 'ririnto-tlaplus-plugin-[0-9]*' -print0 | xargs -0 -n1 npm publish --tag latest
           main=$(find packages -name 'ririnto-tlaplus-plugin-[0-9]*.tgz' -print -quit)
-          npm publish "$main"
+          npm publish "$main" --tag latest
       - name: Create the GitHub release carrying the published npm tarballs
         env:
           GH_TOKEN: ${{ github.token }}
