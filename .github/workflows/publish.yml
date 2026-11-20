@@ -1,0 +1,34 @@
+name: Publish package
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    name: Publish package (darwin-arm64)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/setup-java@v6
+        with:
+          distribution: graalvm-community
+          java-version: '25'
+          check-latest: true
+      - name: Check native build tools
+        run: |
+          "$JAVA_HOME/bin/native-image" --version
+          mvn --version
+      - run: npm install
+      - name: Pack
+        run: npm pack
+      - name: Test the packed artifact without Java on the consumer PATH
+        run: npm test -- ./*.tgz
+      - name: Publish to npm
+        run: npm publish ./*.tgz
