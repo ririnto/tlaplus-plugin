@@ -5,3 +5,5 @@ skills/
 *.tgz
 
 /target/
+native/
+npm/
