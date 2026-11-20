@@ -64,10 +64,7 @@ internal enum class Tool(
                 EXPLORE -> reader.depth()
                 else -> 100L
             }
-        require(reader.errors.isEmpty()) {
-            "MCP error -32602: Input validation error: Invalid arguments for tool $toolName: " +
-                reader.errors.joinToString("\n")
-        }
+        reader.requireValid(toolName)
         return ToolInput(checkNotNull(file), config, options, javaOptions, depth)
     }
 }
@@ -98,7 +95,14 @@ internal data class ToolInput(
 private class Arguments(
     private val values: Map<String, Any?>
 ) {
-    val errors = mutableListOf<String>()
+    private val errors = mutableListOf<String>()
+
+    fun requireValid(toolName: String) {
+        require(errors.isEmpty()) {
+            "MCP error -32602: Input validation error: Invalid arguments for tool $toolName: " +
+                errors.joinToString("\n")
+        }
+    }
 
     fun path(
         key: String,
