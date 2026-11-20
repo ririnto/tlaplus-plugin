@@ -5,20 +5,25 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
-const executable = process.platform === "win32" ? "tlaplus-server.exe" : "tlaplus-server";
+const executable =
+  process.platform === "win32" ? "tlaplus-server.exe" : "tlaplus-server";
 const platform = `${process.platform}-${process.arch}`;
-const localServer = fileURLToPath(new URL(executable, new URL("../native/", import.meta.url)));
+const localServer = fileURLToPath(
+  new URL(executable, new URL("../native/", import.meta.url))
+);
 
 let serverPath: string;
 try {
   serverPath = createRequire(import.meta.url).resolve(
-    `@ririnto/tlaplus-plugin-${platform}/${executable}`,
+    `@ririnto/tlaplus-plugin-${platform}/${executable}`
   );
 } catch {
   serverPath = localServer;
 }
 
-const server = spawn(serverPath, [`-Djava.io.tmpdir=${tmpdir()}`], { stdio: "inherit" });
+const server = spawn(serverPath, [`-Djava.io.tmpdir=${tmpdir()}`], {
+  stdio: "inherit"
+});
 
 const signalNames = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 const forward = (signal: NodeJS.Signals) => {
@@ -31,7 +36,7 @@ for (const name of signalNames) {
 server.once("error", (error) => {
   console.error(
     `Cannot start the TLA+ server for ${platform}. ` +
-      `Install @ririnto/tlaplus-plugin-${platform} or build it with npm run build. ${error.message}`,
+      `Install @ririnto/tlaplus-plugin-${platform} or build it with npm run build. ${error.message}`
   );
 });
 server.once("close", (code, signal) => {

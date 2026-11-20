@@ -8,7 +8,11 @@ import { readFile } from "node:fs/promises";
 export const readManifest = async (file) => {
   /** @type {unknown} */
   const manifest = JSON.parse(await readFile(file, "utf-8"));
-  if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) {
+  if (
+    manifest === null ||
+    typeof manifest !== "object" ||
+    Array.isArray(manifest)
+  ) {
     throw new TypeError(`Expected a JSON object in ${file}`);
   }
   return { ...manifest };

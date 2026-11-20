@@ -3,6 +3,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { sync } from "cross-spawn";
 
 import { readPackageManifest } from "./manifest.mjs";
@@ -20,10 +21,14 @@ const tlaRelease = `https://github.com/tlaplus/tlaplus/releases/download/v${tlaV
  * @param {readonly string[]} args Maven goals and additional command-line options.
  */
 export const runMaven = (args) => {
-  const { error, status, signal } = sync("mvn", ["-B", "-ntp", `-Drevision=${version}`, ...args], {
-    cwd: root,
-    stdio: "inherit",
-  });
+  const { error, status, signal } = sync(
+    "mvn",
+    ["-B", "-ntp", `-Drevision=${version}`, ...args],
+    {
+      cwd: root,
+      stdio: "inherit"
+    }
+  );
   if (error !== null) {
     throw error;
   }
@@ -42,12 +47,18 @@ export const prepareTlaLibrary = async () => {
   try {
     bytes = await readFile(jar);
   } catch (error) {
-    if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
+    if (
+      !(error instanceof Error && "code" in error && error.code === "ENOENT")
+    ) {
       throw error;
     }
-    const response = await fetch(tlaRelease, { signal: AbortSignal.timeout(120_000) });
+    const response = await fetch(tlaRelease, {
+      signal: AbortSignal.timeout(120_000)
+    });
     if (!response.ok) {
-      throw new Error(`TLA+ download failed with HTTP ${response.status}`, { cause: error });
+      throw new Error(`TLA+ download failed with HTTP ${response.status}`, {
+        cause: error
+      });
     }
     bytes = Buffer.from(await response.arrayBuffer());
   }
@@ -59,6 +70,6 @@ export const prepareTlaLibrary = async () => {
     "-DgroupId=org.lamport",
     "-DartifactId=tla2tools",
     `-Dversion=${tlaVersion}`,
-    "-Dpackaging=jar",
+    "-Dpackaging=jar"
   ]);
 };

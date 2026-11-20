@@ -68,11 +68,11 @@ For Cursor, copy the manifest directories into `~/.cursor/plugins/local/tlaplus-
 
 ## Tools and references
 
-| MCP tool                  | Operation                                                                             |
-| ------------------------- | ------------------------------------------------------------------------------------- |
-| `tlaplus_mcp_sany_parse`  | Parse a module and check its semantics.                                               |
-| `tlaplus_mcp_tlc_check`   | Exhaustively check a model and its configured properties.                             |
-| `tlaplus_mcp_tlc_smoke`   | Run one bounded random simulation.                                                    |
+| MCP tool | Operation |
+| --- | --- |
+| `tlaplus_mcp_sany_parse` | Parse a module and check its semantics. |
+| `tlaplus_mcp_tlc_check` | Exhaustively check a model and its configured properties. |
+| `tlaplus_mcp_tlc_smoke` | Run one bounded random simulation. |
 | `tlaplus_mcp_tlc_explore` | Return one bounded behavior, including its initial state and ordered variable values. |
 
 Pass an absolute `fileName`.

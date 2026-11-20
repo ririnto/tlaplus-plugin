@@ -1,14 +1,50 @@
 {
   "reflection": [
-    { "type": "tlc2.module.AnySet", "allDeclaredMethods": true, "allDeclaredFields": true },
-    { "type": "tlc2.module.Bags", "allDeclaredMethods": true, "allDeclaredFields": true },
-    { "type": "tlc2.module.FiniteSets", "allDeclaredMethods": true, "allDeclaredFields": true },
-    { "type": "tlc2.module.Integers", "allDeclaredMethods": true, "allDeclaredFields": true },
-    { "type": "tlc2.module.Naturals", "allDeclaredMethods": true, "allDeclaredFields": true },
-    { "type": "tlc2.module.Randomization", "allDeclaredMethods": true, "allDeclaredFields": true },
-    { "type": "tlc2.module.Sequences", "allDeclaredMethods": true, "allDeclaredFields": true },
-    { "type": "tlc2.module.Strings", "allDeclaredMethods": true, "allDeclaredFields": true },
-    { "type": "tlc2.module.TLC", "allDeclaredMethods": true, "allDeclaredFields": true },
+    {
+      "type": "tlc2.module.AnySet",
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
+      "type": "tlc2.module.Bags",
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
+      "type": "tlc2.module.FiniteSets",
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
+      "type": "tlc2.module.Integers",
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
+      "type": "tlc2.module.Naturals",
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
+      "type": "tlc2.module.Randomization",
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
+      "type": "tlc2.module.Sequences",
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
+      "type": "tlc2.module.Strings",
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
+      "type": "tlc2.module.TLC",
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
     {
       "type": "tlc2.module.TransitiveClosure",
       "allDeclaredMethods": true,
@@ -16,11 +52,24 @@
     },
     { "type": "tlc2.tool.fp.LSBDiskFPSet", "allDeclaredConstructors": true },
     { "type": "tlc2.tool.fp.MSBDiskFPSet", "allDeclaredConstructors": true },
-    { "type": "tlc2.tool.fp.OffHeapDiskFPSet", "allDeclaredConstructors": true },
+    {
+      "type": "tlc2.tool.fp.OffHeapDiskFPSet",
+      "allDeclaredConstructors": true
+    },
     { "type": "tlc2.tool.distributed.fp.FPSetRMI", "allPublicMethods": true },
-    { "type": { "proxy": ["java.rmi.Remote", "tlc2.tool.distributed.fp.FPSetRMI"] } },
-    { "type": "sun.rmi.transport.DGCImpl_Skel", "allDeclaredConstructors": true },
-    { "type": "sun.rmi.transport.DGCImpl_Stub", "allDeclaredConstructors": true }
+    {
+      "type": {
+        "proxy": ["java.rmi.Remote", "tlc2.tool.distributed.fp.FPSetRMI"]
+      }
+    },
+    {
+      "type": "sun.rmi.transport.DGCImpl_Skel",
+      "allDeclaredConstructors": true
+    },
+    {
+      "type": "sun.rmi.transport.DGCImpl_Stub",
+      "allDeclaredConstructors": true
+    }
   ],
   "resources": [
     { "glob": "knowledgebase/**" },
