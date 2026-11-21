@@ -6,24 +6,30 @@ The npm package includes a native Spring AI stdio server with the official TLA+ 
 ## Use the package
 
 Install Node.js 24 or later.
-Install `@tlaplus-mcp/tlaplus-mcp` from the npm registry.
-The package pulls the native server binary for the current platform through `optionalDependencies`, so Linux x64, Linux ARM64, macOS ARM64, macOS x64, and Windows x64 all install with one command.
+Install `@tlaplus-mcp/tlaplus-mcp` using the dist-tag for your TLA+ tools version, such as `tlaplus-1.7.4`, or specify an exact npm version.
+The package pulls the native server binary for the current platform through `optionalDependencies`.
 
-Linux packages require glibc.
-Alpine and other musl-based Linux distributions are unsupported.
-The native package CI tests Linux x64 on Ubuntu 26.04 and Linux ARM64 on Ubuntu 24.04.
-Older systems must provide the interpreter, glibc symbols, and shared libraries recorded by those jobs.
+Supported platforms
+
+- Linux x64 and ARM64 with glibc (`-gnu`) or musl (`-musl`).
+- macOS x64 and ARM64.
+- Windows x64.
+
+Linux x64 and ARM64 each have separate glibc and musl packages.
+On Alpine, npm selects the platform package with the `-musl` suffix.
+The native package CI tests the glibc packages on Ubuntu 26.04 for x64 and Ubuntu 24.04 for ARM64.
+Older glibc systems must provide the interpreter, versioned symbols, and shared libraries recorded by those jobs.
+The musl jobs build and test both architectures on Alpine 3.24.
 
 Windows ARM64 (`win32-arm64`) is unsupported because Liberica Native Image Kit for JDK 25 is unavailable for that target.
-The npm name `@tlaplus-mcp/tlaplus-mcp-win32-arm64` is reserved.
 Add it to the release matrices only after a native ARM64 build passes the same Java-free consumer tests as the other platforms.
 
 ```sh
-npm install @tlaplus-mcp/tlaplus-mcp
+npm install @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4
 npm exec -- tlaplus-mcp
 ```
 
-`npx -y @tlaplus-mcp/tlaplus-mcp` starts the server without a local install.
+`npx -y @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4` starts the server without a local install.
 
 ### Register the MCP server
 
@@ -32,7 +38,7 @@ Every command below runs the npm release, so the host fetches the package from t
 Claude Code:
 
 ```sh
-claude mcp add tlaplus -- npx -y @tlaplus-mcp/tlaplus-mcp
+claude mcp add tlaplus -- npx -y @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4
 ```
 
 Codex, in `~/.codex/config.toml`:
@@ -40,7 +46,7 @@ Codex, in `~/.codex/config.toml`:
 ```toml
 [mcp_servers.tlaplus]
 command = "npx"
-args = ["-y", "@tlaplus-mcp/tlaplus-mcp"]
+args = ["-y", "@tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4"]
 ```
 
 Cursor, in `~/.cursor/mcp.json`:
@@ -50,13 +56,13 @@ Cursor, in `~/.cursor/mcp.json`:
   "mcpServers": {
     "tlaplus": {
       "command": "npx",
-      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp"]
+      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4"]
     }
   }
 }
 ```
 
-For a general MCP client, set `command` to `npx` with the arguments `-y @tlaplus-mcp/tlaplus-mcp`.
+For a general MCP client, set `command` to `npx` with the arguments `-y @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4`.
 In an npm project you can instead set `command` to `node` with `node_modules/@tlaplus-mcp/tlaplus-mcp/dist/server.mjs`, or run the platform binary directly from `node_modules/@tlaplus-mcp/tlaplus-mcp-<platform>/tlaplus-server`.
 The executable includes the TLA+ standard modules and the knowledge base.
 The server writes JSON-RPC to stdout and its own diagnostics to stderr.
@@ -99,6 +105,8 @@ The editor plugin skills cover adding a variable, splitting an action, and deriv
 ## Build a release
 
 Build the tarball on the target platform with Git, Node.js 24 LTS, Liberica Native Image Kit for JDK 25, and Maven.
+Build the musl targets on a matching Linux architecture with Docker and `bash scripts/package-musl.sh <platform>`.
+The script uses the official Liberica NIK musl distribution inside Alpine.
 The Windows build uses x64 Visual Studio Build Tools 17.13.2 or later and the Windows 11 SDK.
 
 ```sh
@@ -126,9 +134,10 @@ GitHub Actions builds, tests, and publishes the main package plus one platform p
 
 Version the plugin by UTC build date and a two-digit build number, for example `2026.11.20.01`.
 Publish a release by pushing a Git tag with the plugin version, for example `2026.11.20.01`.
-The publish workflow derives the package version from the tag by prepending the TLA+ tools version, for example `1.7.4-2026.11.20.01`, and stamps the main and platform npm packages with it.
-npm cleans the prerelease identifiers when it packs and publishes, so the build number loses its leading zero in the registry while the tag and the GitHub release keep it.
+The publish workflow prepends the TLA+ tools version and removes leading zeroes from numeric date and build fields to produce the npm version, for example `1.7.4-2026.11.20.1`.
+The Git tag and GitHub release retain the original CalVer spelling.
 The MCP server reports the package version in its initialize response.
-The workflow publishes the main package and the five platform packages to npm on the `latest` dist-tag, then creates a GitHub release named after the tag that carries the exact tarballs published to npm.
+The workflow verifies that all eight npm packages have the expected version before publishing them on the same moving dist-tag, for example `tlaplus-1.7.4`.
+It publishes the seven native packages first and the main package last, then creates a GitHub release with the eight published tarballs.
 
 [AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [Spring AI MCP Server Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html)

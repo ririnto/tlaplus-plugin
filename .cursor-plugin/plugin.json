@@ -12,7 +12,7 @@
     "tlaplus": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp"]
+      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4"]
     }
   }
 }

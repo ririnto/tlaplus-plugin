@@ -298,15 +298,7 @@ private class WireClient(root: Path, launch: Launch) : AutoCloseable {
             )
             Launch.WRAPPER -> listOf(node, dist.resolve("server.mjs").toString())
             Launch.STANDALONE -> {
-                val os = System.getProperty("os.name").lowercase()
-                val platform = "${when {
-                    os.startsWith("windows") -> "win32"
-                    os.startsWith("mac") -> "darwin"
-                    else -> "linux"
-                }}-${when (System.getProperty("os.arch")) {
-                    "aarch64" -> "arm64"
-                    else -> "x64"
-                }}"
+                val platform = checkNotNull(System.getProperty("consumer.platform"))
                 val name =
                     when (ToolInput.isWindows) {
                         true -> "tlaplus-server.exe"

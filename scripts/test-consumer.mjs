@@ -11,7 +11,9 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
+import { linuxLibc, nativePlatform } from "../src/native-platform.mjs";
 import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
 import { readPackageManifest } from "./manifest.mjs";
 
@@ -21,7 +23,8 @@ if (npm === undefined || npm.length === 0) {
 }
 const directory = await mkdtemp(path.join(tmpdir(), "tlaplus-consumer-"));
 const consumer = path.join(directory, "consumer project");
-const platform = `${process.platform}-${process.arch}`;
+const platform = nativePlatform();
+const packageName = "@tlaplus-mcp/tlaplus-mcp";
 try {
   const mainArg = process.argv.at(2);
   const platformArg = process.argv.at(3);
@@ -59,8 +62,11 @@ try {
   const mainName = packed.find((name) =>
     /^tlaplus-mcp-tlaplus-mcp-[0-9]/u.test(name)
   );
-  const platformName = packed.find((name) =>
-    name.startsWith(`tlaplus-mcp-tlaplus-mcp-${platform}-`)
+  const platformPrefix = `tlaplus-mcp-tlaplus-mcp-${platform}-`;
+  const platformName = packed.find(
+    (name) =>
+      name.startsWith(platformPrefix) &&
+      /[0-9]/u.test(name.charAt(platformPrefix.length))
   );
   mainTarball ??=
     mainName === undefined ? undefined : path.join(directory, mainName);
@@ -97,19 +103,16 @@ try {
   console.log("Consumer environment has no Java executable or JAVA_HOME");
   await writeFile(
     path.join(consumer, "package.json"),
-    JSON.stringify({ private: true })
+    JSON.stringify({
+      private: true,
+      overrides: {
+        [`${packageName}-${platform}`]: pathToFileURL(platformTarball).href
+      }
+    })
   );
   execFileSync(
     node,
-    [
-      npm,
-      "install",
-      "--offline",
-      "--no-audit",
-      "--no-fund",
-      mainTarball,
-      platformTarball
-    ],
+    [npm, "install", "--offline", "--no-audit", "--no-fund", mainTarball],
     {
       cwd: consumer,
       env,
@@ -147,9 +150,18 @@ try {
         (entry.name === "LICENSE" || entry.name.endsWith(".md"))
     )
   );
-  const platformFiles = await readdir(
-    path.join(consumer, `node_modules/@tlaplus-mcp/tlaplus-mcp-${platform}`)
+  const nativePackage = path.join(
+    consumer,
+    `node_modules/${packageName}-${platform}`
   );
+  const platformFiles = await readdir(nativePackage);
+  const libc = linuxLibc();
+  if (libc !== null) {
+    const manifest = await readPackageManifest(
+      path.join(nativePackage, "package.json")
+    );
+    assert.deepEqual(manifest.libc, [libc]);
+  }
   assert.deepEqual(platformFiles.toSorted(), [
     "TLA-LICENSE",
     "package.json",
@@ -158,6 +170,9 @@ try {
   console.log("Main package entries:", mainFiles.toSorted().join(", "));
   console.log("Main dist entries:", distFiles.toSorted().join(", "));
   console.log("Main knowledgebase entries:", knowledgeFiles.join(", "));
+  console.log(
+    `npm selected ${packageName}-${platform} as an optional dependency`
+  );
   console.log("Platform package entries:", platformFiles.toSorted().join(", "));
   const { version } = await readPackageManifest(
     path.join(installed, "package.json")
@@ -169,7 +184,8 @@ try {
     `-Dconsumer.node=${node}`,
     `-Dconsumer.npm=${npm}`,
     `-Dconsumer.directory=${consumer}`,
-    `-Dconsumer.version=${version}`
+    `-Dconsumer.version=${version}`,
+    `-Dconsumer.platform=${platform}`
   ]);
 } finally {
   await rm(directory, { recursive: true, force: true });

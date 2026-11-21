@@ -16,9 +16,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            platform: linux-x64
+            platform: linux-x64-gnu
           - os: ubuntu-24.04-arm
-            platform: linux-arm64
+            platform: linux-arm64-gnu
+          - os: ubuntu-latest
+            platform: linux-x64-musl
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64-musl
           - os: macos-latest
             platform: darwin-arm64
           - os: macos-15-intel
@@ -35,14 +39,16 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: pnpm
       - uses: graalvm/setup-graalvm@v1
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
         with:
           distribution: liberica
           java-version: "25"
           cache: maven
       - name: Check native build tools
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
         shell: pwsh
         run: |-
-          $platform = node -p 'process.platform + "-" + process.arch'
+          $platform = node --input-type=module -e 'import { nativePlatform } from "./src/native-platform.mjs"; console.log(nativePlatform())'
           if ($LASTEXITCODE -ne 0 -or $platform -ne $env:EXPECTED_PLATFORM) {
             throw "Runner platform does not match $env:EXPECTED_PLATFORM"
           }
@@ -62,7 +68,7 @@ jobs:
       - name: Sync platform package versions
         run: node scripts/sync-optional-deps.mjs
       - name: Build
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && !endsWith(matrix.platform, '-musl')
         run: node scripts/build.mjs
       - name: Build with Visual Studio x64 tools
         if: runner.os == 'Windows'
@@ -85,10 +91,13 @@ jobs:
           & $env:ComSpec /d /c $script
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Pack the main package
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
         run: npm pack --ignore-scripts
       - name: Pack the platform package
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
         run: npm pack ./npm
       - name: Test the packed artifacts without Java on the consumer PATH
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
         shell: bash
         run: |-
           main=$(find . -maxdepth 1 -name 'tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz' -print -quit)
@@ -98,6 +107,11 @@ jobs:
             exit 1
           fi
           npm test -- "$main" "$platform"
+      - name: Build, pack, and test in Alpine
+        if: endsWith(matrix.platform, '-musl')
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
+        run: bash scripts/package-musl.sh "$EXPECTED_PLATFORM"
       - uses: actions/upload-artifact@v7
         with:
           name: npm-package-${{ matrix.platform }}
@@ -131,17 +145,29 @@ jobs:
             fi
             cp "$1" release-packages/
           }
-          copy_tarball packages/npm-package-linux-x64/tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz
-          for platform in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
+          copy_tarball packages/npm-package-linux-x64-gnu/tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz
+          for platform in darwin-arm64 darwin-x64 linux-arm64-gnu linux-arm64-musl linux-x64-gnu linux-x64-musl win32-x64; do
             copy_tarball "packages/npm-package-$platform/tlaplus-mcp-tlaplus-mcp-$platform-"[0-9]*.tgz
           done
       - name: Publish every platform package, then the main package
         shell: bash
         run: |-
-          for tarball in release-packages/tlaplus-mcp-tlaplus-mcp-{darwin-arm64,darwin-x64,linux-arm64,linux-x64,win32-x64}-[0-9]*.tgz; do
-            npm publish "$tarball" --access public --tag latest
+          version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
+          dist_tag="tlaplus-${version%%-*}"
+          tarballs=(
+            release-packages/tlaplus-mcp-tlaplus-mcp-{darwin-arm64,darwin-x64,linux-arm64-gnu,linux-arm64-musl,linux-x64-gnu,linux-x64-musl,win32-x64}-"$version".tgz
+            release-packages/tlaplus-mcp-tlaplus-mcp-"$version".tgz
+          )
+          for tarball in "${tarballs[@]}"; do
+            packed_version=$(tar -xOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version')
+            if [[ "$packed_version" != "$version" ]]; then
+              printf 'Expected package version %s in %s, got %s\n' "$version" "$tarball" "$packed_version" >&2
+              exit 1
+            fi
           done
-          npm publish release-packages/tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz --access public --tag latest
+          for tarball in "${tarballs[@]}"; do
+            npm publish "$tarball" --access public --tag "$dist_tag"
+          done
       - name: Create the GitHub release carrying the published npm tarballs
         env:
           GH_TOKEN: ${{ github.token }}

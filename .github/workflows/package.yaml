@@ -13,9 +13,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            platform: linux-x64
+            platform: linux-x64-gnu
           - os: ubuntu-24.04-arm
-            platform: linux-arm64
+            platform: linux-arm64-gnu
+          - os: ubuntu-latest
+            platform: linux-x64-musl
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64-musl
           - os: macos-latest
             platform: darwin-arm64
           - os: macos-15-intel
@@ -31,14 +35,16 @@ jobs:
           node-version: 24
           cache: pnpm
       - uses: graalvm/setup-graalvm@v1
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
         with:
           distribution: liberica
           java-version: "25"
           cache: maven
       - name: Check native build tools
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
         shell: pwsh
         run: |-
-          $platform = node -p 'process.platform + "-" + process.arch'
+          $platform = node --input-type=module -e 'import { nativePlatform } from "./src/native-platform.mjs"; console.log(nativePlatform())'
           if ($LASTEXITCODE -ne 0 -or $platform -ne $env:EXPECTED_PLATFORM) {
             throw "Runner platform does not match $env:EXPECTED_PLATFORM"
           }
@@ -53,7 +59,7 @@ jobs:
       - name: Lint with Ultracite
         run: pnpm run check:ultracite
       - name: Build and pack the main package
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && !endsWith(matrix.platform, '-musl')
         run: npm pack
       - name: Build and pack the main package with Visual Studio x64 tools
         if: runner.os == 'Windows'
@@ -76,8 +82,10 @@ jobs:
           & $env:ComSpec /d /c $script
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Pack the platform package
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
         run: npm pack ./npm
       - name: Test the packed artifacts without Java on the consumer PATH
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
         shell: bash
         run: |-
           main=$(find . -maxdepth 1 -name 'tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz' -print -quit)
@@ -99,6 +107,11 @@ jobs:
             printf 'Highest required glibc version: %s\n' "$required_glibc"
           fi
           npm test -- "$main" "$platform"
+      - name: Build, pack, and test in Alpine
+        if: endsWith(matrix.platform, '-musl')
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
+        run: bash scripts/package-musl.sh "$EXPECTED_PLATFORM"
       - uses: actions/upload-artifact@v7
         with:
           name: npm-package-${{ matrix.platform }}
