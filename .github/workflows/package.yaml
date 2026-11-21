@@ -20,7 +20,6 @@ jobs:
             platform: darwin-arm64
           - os: macos-15-intel
             platform: darwin-x64
-            distribution: liberica-nik
           - os: windows-latest
             platform: win32-x64
     runs-on: ${{ matrix.os }}
@@ -31,11 +30,10 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - uses: actions/setup-java@v6
+      - uses: graalvm/setup-graalvm@v1
         with:
-          distribution: ${{ matrix.distribution || 'graalvm-community' }}
+          distribution: liberica
           java-version: "25"
-          check-latest: true
           cache: maven
       - name: Check native build tools
         shell: pwsh
@@ -87,6 +85,18 @@ jobs:
           if [[ -z "$main" || -z "$platform" ]]; then
             echo "Expected the main and platform tarballs" >&2
             exit 1
+          fi
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            elf=$(mktemp)
+            trap 'rm -f "$elf"' EXIT
+            tar -xOf "$platform" package/tlaplus-server > "$elf"
+            printf 'Runner libc: %s\n' "$(getconf GNU_LIBC_VERSION)"
+            readelf -lW "$elf"
+            readelf -dW "$elf"
+            version_needs=$(LC_ALL=C readelf --version-info -W "$elf" | sed -n '/^Version needs section/,$p')
+            printf '%s\n' "$version_needs"
+            required_glibc=$(printf '%s\n' "$version_needs" | grep -oE 'GLIBC_[0-9]+(\.[0-9]+)+' | sort -Vu | tail -n 1)
+            printf 'Highest required glibc version: %s\n' "$required_glibc"
           fi
           npm test -- "$main" "$platform"
       - uses: actions/upload-artifact@v7

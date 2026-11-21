@@ -9,7 +9,12 @@ Install Node.js 24 or later.
 Install `@tlaplus-mcp/tlaplus-mcp` from the npm registry.
 The package pulls the native server binary for the current platform through `optionalDependencies`, so Linux x64, Linux ARM64, macOS ARM64, macOS x64, and Windows x64 all install with one command.
 
-Windows ARM64 (`win32-arm64`) is unsupported because neither of the project's JDK 25 Native Image toolchains targets it.
+Linux packages require glibc.
+Alpine and other musl-based Linux distributions are unsupported.
+The native package CI tests Linux x64 on Ubuntu 26.04 and Linux ARM64 on Ubuntu 24.04.
+Older systems must provide the interpreter, glibc symbols, and shared libraries recorded by those jobs.
+
+Windows ARM64 (`win32-arm64`) is unsupported because Liberica Native Image Kit for JDK 25 is unavailable for that target.
 The npm name `@tlaplus-mcp/tlaplus-mcp-win32-arm64` is reserved.
 Add it to the release matrices only after a native ARM64 build passes the same Java-free consumer tests as the other platforms.
 
@@ -93,8 +98,7 @@ The editor plugin skills cover adding a variable, splitting an action, and deriv
 
 ## Build a release
 
-Build the tarball on the target platform with Git, Node.js 24 LTS, a JDK 25 Native Image toolchain, and Maven.
-Use Liberica Native Image Kit on Intel macOS and GraalVM Community on the other supported targets.
+Build the tarball on the target platform with Git, Node.js 24 LTS, Liberica Native Image Kit for JDK 25, and Maven.
 The Windows build uses x64 Visual Studio Build Tools 17.13.2 or later and the Windows 11 SDK.
 
 ```sh

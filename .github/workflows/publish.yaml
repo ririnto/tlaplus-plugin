@@ -23,7 +23,6 @@ jobs:
             platform: darwin-arm64
           - os: macos-15-intel
             platform: darwin-x64
-            distribution: liberica-nik
           - os: windows-latest
             platform: win32-x64
     runs-on: ${{ matrix.os }}
@@ -35,11 +34,10 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: pnpm
-      - uses: actions/setup-java@v6
+      - uses: graalvm/setup-graalvm@v1
         with:
-          distribution: ${{ matrix.distribution || 'graalvm-community' }}
+          distribution: liberica
           java-version: "25"
-          check-latest: true
           cache: maven
       - name: Check native build tools
         shell: pwsh
