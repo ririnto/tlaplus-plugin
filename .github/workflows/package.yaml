@@ -2,6 +2,9 @@ name: Test release package
 on:
   pull_request:
   workflow_call:
+    outputs:
+      matrix:
+        value: ${{ jobs.platforms.outputs.matrix }}
     inputs:
       release_tag:
         type: string
@@ -11,38 +14,24 @@ permissions:
   contents: read
 
 jobs:
+  platforms:
+    name: Read the package matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: matrix
+        shell: bash
+        run: |-
+          matrix=$(jq -ce . .github/package-matrix.json)
+          echo "value=$matrix" >> "$GITHUB_OUTPUT"
   native-package:
     name: Native package (${{ matrix.platform }})
+    needs: platforms
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            platform: linux-x64-gnu
-            inspect_gnu_elf: true
-          - os: ubuntu-24.04-arm
-            platform: linux-arm64-gnu
-            inspect_gnu_elf: true
-          - os: ubuntu-latest
-            platform: linux-x64-musl
-            alpine_container: node:24-alpine3.24
-            container_arch: amd64
-            host_arch: x86_64
-            jdk_arch: x64
-          - os: ubuntu-24.04-arm
-            platform: linux-arm64-musl
-            alpine_container: node:24-alpine3.24
-            container_arch: arm64
-            host_arch: aarch64
-            jdk_arch: aarch64
-          - os: macos-latest
-            platform: darwin-arm64
-          - os: macos-15-intel
-            platform: darwin-x64
-          - os: windows-latest
-            platform: win32-x64
-            native_image: bin/native-image.cmd
-            visual_studio: true
+      matrix: ${{ fromJSON(needs.platforms.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7

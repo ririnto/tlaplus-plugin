@@ -19,6 +19,10 @@ jobs:
   publish:
     name: Publish to npm
     needs: package
+    outputs:
+      version: ${{ steps.publish.outputs.version }}
+      dist_tag: ${{ steps.publish.outputs.dist_tag }}
+      commit: ${{ steps.publish.outputs.commit }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -47,6 +51,7 @@ jobs:
             copy_tarball "packages/npm-package-$platform/tlaplus-mcp-tlaplus-mcp-$platform-"[0-9]*.tgz
           done
       - name: Publish every platform package, then the main package
+        id: publish
         shell: bash
         run: |-
           version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
@@ -65,7 +70,60 @@ jobs:
           for tarball in "${tarballs[@]}"; do
             npm publish "$tarball" --access public --tag "$dist_tag"
           done
+          {
+            echo "version=$version"
+            echo "dist_tag=$dist_tag"
+            echo "commit=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
       - name: Create the GitHub release carrying the published npm tarballs
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes release-packages/*.tgz
+  registry-smoke:
+    name: Public registry smoke (${{ matrix.platform }})
+    needs:
+      - package
+      - publish
+    permissions: {}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.package.outputs.matrix) }}
+    env:
+      RELEASE_VERSION: ${{ needs.publish.outputs.version }}
+      RELEASE_DIST_TAG: ${{ needs.publish.outputs.dist_tag }}
+      RELEASE_COMMIT: ${{ needs.publish.outputs.commit }}
+      EXPECTED_PLATFORM: ${{ matrix.platform }}
+    steps:
+      - name: Fetch the smoke script at the release commit
+        shell: bash
+        run: |-
+          curl --fail --silent --show-error --retry 3 --max-time 15 \
+            "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$RELEASE_COMMIT/scripts/registry-smoke.mjs" \
+            --output registry-smoke.mjs
+      - uses: actions/setup-node@v7
+        if: ${{ !matrix.alpine_container }}
+        with:
+          node-version: 24
+          token: ""
+          package-manager-cache: false
+      - name: Install from public npm and exercise MCP
+        if: ${{ !matrix.alpine_container }}
+        shell: bash
+        run: node registry-smoke.mjs "$RELEASE_VERSION" "$RELEASE_DIST_TAG" "$EXPECTED_PLATFORM"
+      - name: Install from public npm and exercise MCP in Alpine
+        if: matrix.alpine_container
+        shell: bash
+        env:
+          ALPINE_CONTAINER: ${{ matrix.alpine_container }}
+          CONTAINER_ARCH: ${{ matrix.container_arch }}
+          HOST_ARCH: ${{ matrix.host_arch }}
+        run: |-
+          if [ "$(uname -m)" != "$HOST_ARCH" ]; then
+            echo "Expected a native $HOST_ARCH runner for $EXPECTED_PLATFORM" >&2
+            exit 1
+          fi
+          docker run --rm --platform "linux/$CONTAINER_ARCH" \
+            --mount "type=bind,source=$PWD/registry-smoke.mjs,target=/registry-smoke.mjs,readonly" \
+            "$ALPINE_CONTAINER" node /registry-smoke.mjs "$RELEASE_VERSION" "$RELEASE_DIST_TAG" "$EXPECTED_PLATFORM"
