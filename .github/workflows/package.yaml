@@ -18,6 +18,9 @@ jobs:
             platform: linux-arm64
           - os: macos-latest
             platform: darwin-arm64
+          - os: macos-15-intel
+            platform: darwin-x64
+            distribution: liberica-nik
           - os: windows-latest
             platform: win32-x64
     runs-on: ${{ matrix.os }}
@@ -30,7 +33,7 @@ jobs:
           cache: pnpm
       - uses: actions/setup-java@v6
         with:
-          distribution: graalvm-community
+          distribution: ${{ matrix.distribution || 'graalvm-community' }}
           java-version: "25"
           check-latest: true
           cache: maven
@@ -79,8 +82,12 @@ jobs:
       - name: Test the packed artifacts without Java on the consumer PATH
         shell: bash
         run: |-
-          main=$(find . -maxdepth 1 -name 'ririnto-tlaplus-plugin-[0-9]*.tgz' -print -quit)
-          platform=$(find . -maxdepth 1 -name "ririnto-tlaplus-plugin-${{ matrix.platform }}-*.tgz" -print -quit)
+          main=$(find . -maxdepth 1 -name 'tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz' -print -quit)
+          platform=$(find . -maxdepth 1 -name "tlaplus-mcp-tlaplus-mcp-${{ matrix.platform }}-[0-9]*.tgz" -print -quit)
+          if [[ -z "$main" || -z "$platform" ]]; then
+            echo "Expected the main and platform tarballs" >&2
+            exit 1
+          fi
           npm test -- "$main" "$platform"
       - uses: actions/upload-artifact@v7
         with:

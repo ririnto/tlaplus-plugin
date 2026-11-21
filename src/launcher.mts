@@ -15,7 +15,7 @@ const localServer = fileURLToPath(
 let serverPath: string;
 try {
   serverPath = createRequire(import.meta.url).resolve(
-    `@ririnto/tlaplus-plugin-${platform}/${executable}`
+    `@tlaplus-mcp/tlaplus-mcp-${platform}/${executable}`
   );
 } catch {
   serverPath = localServer;
@@ -36,7 +36,7 @@ for (const name of signalNames) {
 server.once("error", (error) => {
   console.error(
     `Cannot start the TLA+ server for ${platform}. ` +
-      `Install @ririnto/tlaplus-plugin-${platform} or build it with npm run build. ${error.message}`
+      `Install @tlaplus-mcp/tlaplus-mcp-${platform} or build it with npm run build. ${error.message}`
   );
 });
 server.once("close", (code, signal) => {

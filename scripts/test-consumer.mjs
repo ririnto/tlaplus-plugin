@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   chmod,
@@ -20,6 +21,7 @@ if (npm === undefined || npm.length === 0) {
 }
 const directory = await mkdtemp(path.join(tmpdir(), "tlaplus-consumer-"));
 const consumer = path.join(directory, "consumer project");
+const platform = `${process.platform}-${process.arch}`;
 try {
   const mainArg = process.argv.at(2);
   const platformArg = process.argv.at(3);
@@ -55,10 +57,10 @@ try {
   const entries = await readdir(directory);
   const packed = entries.filter((name) => name.endsWith(".tgz"));
   const mainName = packed.find((name) =>
-    /^ririnto-tlaplus-plugin-[0-9]/u.test(name)
+    /^tlaplus-mcp-tlaplus-mcp-[0-9]/u.test(name)
   );
   const platformName = packed.find((name) =>
-    /^ririnto-tlaplus-plugin-(?:darwin|linux|win32)-/u.test(name)
+    name.startsWith(`tlaplus-mcp-tlaplus-mcp-${platform}-`)
   );
   mainTarball ??=
     mainName === undefined ? undefined : path.join(directory, mainName);
@@ -114,7 +116,49 @@ try {
       stdio: "inherit"
     }
   );
-  const installed = path.join(consumer, "node_modules/@ririnto/tlaplus-plugin");
+  const installed = path.join(
+    consumer,
+    "node_modules/@tlaplus-mcp/tlaplus-mcp"
+  );
+  const mainFiles = await readdir(installed);
+  assert.deepEqual(mainFiles.toSorted(), [
+    "LICENSE",
+    "README.md",
+    "dist",
+    "package.json"
+  ]);
+  const dist = path.join(installed, "dist");
+  const distFiles = await readdir(dist);
+  assert.deepEqual(distFiles.toSorted(), [
+    "TLA-LICENSE",
+    "knowledgebase",
+    "server.mjs"
+  ]);
+  const knowledge = await readdir(path.join(dist, "knowledgebase"), {
+    withFileTypes: true
+  });
+  const knowledgeFiles = knowledge.map((entry) => entry.name).toSorted();
+  assert.ok(knowledgeFiles.includes("LICENSE"));
+  assert.ok(knowledgeFiles.includes("tlc-config-files.md"));
+  assert.ok(
+    knowledge.every(
+      (entry) =>
+        entry.isFile() &&
+        (entry.name === "LICENSE" || entry.name.endsWith(".md"))
+    )
+  );
+  const platformFiles = await readdir(
+    path.join(consumer, `node_modules/@tlaplus-mcp/tlaplus-mcp-${platform}`)
+  );
+  assert.deepEqual(platformFiles.toSorted(), [
+    "TLA-LICENSE",
+    "package.json",
+    process.platform === "win32" ? "tlaplus-server.exe" : "tlaplus-server"
+  ]);
+  console.log("Main package entries:", mainFiles.toSorted().join(", "));
+  console.log("Main dist entries:", distFiles.toSorted().join(", "));
+  console.log("Main knowledgebase entries:", knowledgeFiles.join(", "));
+  console.log("Platform package entries:", platformFiles.toSorted().join(", "));
   const { version } = await readPackageManifest(
     path.join(installed, "package.json")
   );
