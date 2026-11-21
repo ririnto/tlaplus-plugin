@@ -68,7 +68,7 @@ jobs:
             fi
           done
           for tarball in "${tarballs[@]}"; do
-            npm publish "$tarball" --access public --tag "$dist_tag"
+            npm publish "./$tarball" --access public --tag "$dist_tag"
           done
           {
             echo "version=$version"
