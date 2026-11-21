@@ -105,6 +105,7 @@ try {
   const platform = `${process.platform}-${process.arch}`;
   const platformSpec = {
     "darwin-arm64": { os: ["darwin"], cpu: ["arm64"] },
+    "darwin-x64": { os: ["darwin"], cpu: ["x64"] },
     "linux-arm64": { os: ["linux"], cpu: ["arm64"] },
     "linux-x64": { os: ["linux"], cpu: ["x64"] },
     "win32-x64": { os: ["win32"], cpu: ["x64"] }
@@ -153,6 +154,7 @@ try {
         author: manifest.author,
         repository: manifest.repository,
         engines: manifest.engines,
+        files: [executable, "TLA-LICENSE"],
         os: platformSpec.os,
         cpu: platformSpec.cpu
       },

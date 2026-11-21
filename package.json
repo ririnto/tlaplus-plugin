@@ -12,12 +12,7 @@
     "tlaplus-mcp": "dist/server.mjs"
   },
   "files": [
-    "dist/",
-    "skills/",
-    ".agents/plugins/marketplace.json",
-    ".claude-plugin/",
-    ".codex-plugin/",
-    ".cursor-plugin/"
+    "dist/"
   ],
   "type": "module",
   "publishConfig": {
@@ -54,6 +49,7 @@
   },
   "optionalDependencies": {
     "@tlaplus-mcp/tlaplus-mcp-darwin-arm64": "1.7.4-2026.11.19.1",
+    "@tlaplus-mcp/tlaplus-mcp-darwin-x64": "1.7.4-2026.11.19.1",
     "@tlaplus-mcp/tlaplus-mcp-linux-arm64": "1.7.4-2026.11.19.1",
     "@tlaplus-mcp/tlaplus-mcp-linux-x64": "1.7.4-2026.11.19.1",
     "@tlaplus-mcp/tlaplus-mcp-win32-x64": "1.7.4-2026.11.19.1"

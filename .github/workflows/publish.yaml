@@ -21,6 +21,9 @@ jobs:
             platform: linux-arm64
           - os: macos-latest
             platform: darwin-arm64
+          - os: macos-15-intel
+            platform: darwin-x64
+            distribution: liberica-nik
           - os: windows-latest
             platform: win32-x64
     runs-on: ${{ matrix.os }}
@@ -34,7 +37,7 @@ jobs:
           cache: pnpm
       - uses: actions/setup-java@v6
         with:
-          distribution: graalvm-community
+          distribution: ${{ matrix.distribution || 'graalvm-community' }}
           java-version: "25"
           check-latest: true
           cache: maven
@@ -58,8 +61,8 @@ jobs:
         run: |-
           version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
           npm version "$version" --no-git-tag-version
-      - name: Sync platform package and editor plugin versions
-        run: node scripts/sync-release-versions.mjs
+      - name: Sync platform package versions
+        run: node scripts/sync-optional-deps.mjs
       - name: Build
         if: runner.os != 'Windows'
         run: node scripts/build.mjs
@@ -131,13 +134,13 @@ jobs:
             cp "$1" release-packages/
           }
           copy_tarball packages/npm-package-linux-x64/tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz
-          for platform in darwin-arm64 linux-arm64 linux-x64 win32-x64; do
+          for platform in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
             copy_tarball "packages/npm-package-$platform/tlaplus-mcp-tlaplus-mcp-$platform-"[0-9]*.tgz
           done
       - name: Publish every platform package, then the main package
         shell: bash
         run: |-
-          for tarball in release-packages/tlaplus-mcp-tlaplus-mcp-{darwin-arm64,linux-arm64,linux-x64,win32-x64}-[0-9]*.tgz; do
+          for tarball in release-packages/tlaplus-mcp-tlaplus-mcp-{darwin-arm64,darwin-x64,linux-arm64,linux-x64,win32-x64}-[0-9]*.tgz; do
             npm publish "$tarball" --access public --tag latest
           done
           npm publish release-packages/tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz --access public --tag latest
