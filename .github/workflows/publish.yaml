@@ -16,16 +16,100 @@ jobs:
     uses: ./.github/workflows/package.yaml
     with:
       release_tag: ${{ github.ref_name }}
-  publish:
-    name: Publish to npm
+  preflight:
+    name: Verify release tarballs
     needs: package
+    permissions:
+      contents: read
     outputs:
-      version: ${{ steps.publish.outputs.version }}
-      dist_tag: ${{ steps.publish.outputs.dist_tag }}
-      commit: ${{ steps.publish.outputs.commit }}
+      version: ${{ steps.release.outputs.version }}
+      dist_tag: ${{ steps.release.outputs.dist_tag }}
+      commit: ${{ steps.release.outputs.commit }}
+      tarballs: ${{ steps.release.outputs.tarballs }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Download every packed artifact
+        uses: actions/download-artifact@v8
+        with:
+          pattern: npm-package-*
+          path: packages
+      - name: Verify one exact-version tarball per npm package
+        id: release
+        shell: bash
+        env:
+          PACKAGE_MATRIX: ${{ needs.package.outputs.matrix }}
+        run: |-
+          version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
+          dist_tag=$(node --input-type=module -e 'import { tlaDistTag } from "./scripts/tla-version.mjs"; console.log(tlaDistTag)')
+          commit=$(git rev-parse HEAD)
+          platforms=$(jq -r '.include | map(.platform) | sort[]' <<< "$PACKAGE_MATRIX")
+          tarballs=()
+          check_tarball() {
+            local candidates=("$1"[0-9]*.tgz)
+            local tarball="$1$version.tgz"
+            if [ "${#candidates[@]}" -ne 1 ] || [ "${candidates[0]}" != "$tarball" ] || [ ! -f "$tarball" ]; then
+              echo "Expected exactly one tarball at $tarball" >&2
+              exit 1
+            fi
+            local packed_version
+            packed_version=$(tar -xOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version')
+            if [ "$packed_version" != "$version" ]; then
+              echo "Expected package version $version in $tarball, got $packed_version" >&2
+              exit 1
+            fi
+            tarballs+=("$tarball")
+          }
+          check_tarball packages/npm-package-linux-x64-gnu/tlaplus-mcp-tlaplus-mcp-
+          while IFS= read -r platform; do
+            check_tarball "packages/npm-package-$platform/tlaplus-mcp-tlaplus-mcp-$platform-"
+          done <<< "$platforms"
+          {
+            echo "version=$version"
+            echo "dist_tag=$dist_tag"
+            echo "commit=$commit"
+            echo 'tarballs<<EOF'
+            printf '%s\n' "${tarballs[@]}"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+  publish-platform:
+    name: Publish platform package (${{ matrix.platform }})
+    needs:
+      - package
+      - preflight
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJSON(needs.package.outputs.matrix) }}
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v8
+        with:
+          name: npm-package-${{ matrix.platform }}
+          path: packages
+      - name: Publish platform package
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+          RELEASE_DIST_TAG: ${{ needs.preflight.outputs.dist_tag }}
+        run: |-
+          npm publish "./packages/tlaplus-mcp-tlaplus-mcp-$PLATFORM-$RELEASE_VERSION.tgz" --access public --tag "$RELEASE_DIST_TAG"
+  publish:
+    name: Publish main package and create the GitHub release
+    needs:
+      - preflight
+      - publish-platform
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -35,54 +119,26 @@ jobs:
         with:
           pattern: npm-package-*
           path: packages
-      - name: Select one tarball per npm package
+      - name: Publish main package
         shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+          RELEASE_DIST_TAG: ${{ needs.preflight.outputs.dist_tag }}
         run: |-
-          mkdir release-packages
-          copy_tarball() {
-            if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
-              echo "Expected exactly one tarball for $1" >&2
-              exit 1
-            fi
-            cp "$1" release-packages/
-          }
-          copy_tarball packages/npm-package-linux-x64-gnu/tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz
-          for platform in darwin-arm64 darwin-x64 linux-arm64-gnu linux-arm64-musl linux-x64-gnu linux-x64-musl win32-x64; do
-            copy_tarball "packages/npm-package-$platform/tlaplus-mcp-tlaplus-mcp-$platform-"[0-9]*.tgz
-          done
-      - name: Publish every platform package, then the main package
-        id: publish
-        shell: bash
-        run: |-
-          version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
-          dist_tag=$(node --input-type=module -e 'import { tlaDistTag } from "./scripts/tla-version.mjs"; console.log(tlaDistTag)')
-          tarballs=(
-            release-packages/tlaplus-mcp-tlaplus-mcp-{darwin-arm64,darwin-x64,linux-arm64-gnu,linux-arm64-musl,linux-x64-gnu,linux-x64-musl,win32-x64}-"$version".tgz
-            release-packages/tlaplus-mcp-tlaplus-mcp-"$version".tgz
-          )
-          for tarball in "${tarballs[@]}"; do
-            packed_version=$(tar -xOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version')
-            if [ "$packed_version" != "$version" ]; then
-              echo "Expected package version $version in $tarball, got $packed_version" >&2
-              exit 1
-            fi
-          done
-          for tarball in "${tarballs[@]}"; do
-            npm publish "./$tarball" --access public --tag "$dist_tag"
-          done
-          {
-            echo "version=$version"
-            echo "dist_tag=$dist_tag"
-            echo "commit=$(git rev-parse HEAD)"
-          } >> "$GITHUB_OUTPUT"
+          npm publish "./packages/npm-package-linux-x64-gnu/tlaplus-mcp-tlaplus-mcp-$RELEASE_VERSION.tgz" --access public --tag "$RELEASE_DIST_TAG"
       - name: Create the GitHub release carrying the published npm tarballs
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes release-packages/*.tgz
+          RELEASE_TARBALLS: ${{ needs.preflight.outputs.tarballs }}
+        run: |-
+          mapfile -t tarballs <<< "$RELEASE_TARBALLS"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes "${tarballs[@]}"
   registry-smoke:
     name: Public registry smoke (${{ matrix.platform }})
     needs:
       - package
+      - preflight
       - publish
     permissions: {}
     runs-on: ${{ matrix.os }}
@@ -91,9 +147,9 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.package.outputs.matrix) }}
     env:
-      RELEASE_VERSION: ${{ needs.publish.outputs.version }}
-      RELEASE_DIST_TAG: ${{ needs.publish.outputs.dist_tag }}
-      RELEASE_COMMIT: ${{ needs.publish.outputs.commit }}
+      RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+      RELEASE_DIST_TAG: ${{ needs.preflight.outputs.dist_tag }}
+      RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
       EXPECTED_PLATFORM: ${{ matrix.platform }}
     steps:
       - name: Fetch the smoke script at the release commit
