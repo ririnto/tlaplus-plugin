@@ -213,6 +213,14 @@ try {
     `-Dconsumer.version=${version}`,
     `-Dconsumer.platform=${platform}`
   ]);
+  const output = process.env.TLAPLUS_PACKAGE_OUTPUT;
+  if (output !== undefined) {
+    await Promise.all(
+      [mainTarball, platformTarball].map(async (tarball) => {
+        await copyFile(tarball, path.join(output, path.basename(tarball)));
+      })
+    );
+  }
 } finally {
   await rm(directory, { recursive: true, force: true });
 }

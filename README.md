@@ -105,8 +105,8 @@ The editor plugin skills cover adding a variable, splitting an action, and deriv
 ## Build a release
 
 Build the tarball on the target platform with Git, Node.js 24 LTS, Liberica Native Image Kit for JDK 25, and Maven.
-Build the musl targets on a matching Linux architecture with Docker, curl, jq, and `bash scripts/package-musl.sh <platform>`.
-The script uses the official Liberica NIK musl distribution inside Alpine.
+For a musl build, use Alpine on the target architecture and install the official Liberica NIK musl distribution.
+The package workflow runs both musl builds in architecture-matched Alpine containers.
 The Windows build uses x64 Visual Studio Build Tools 17.13.2 or later and the Windows 11 SDK.
 
 ```sh
