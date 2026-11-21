@@ -15,6 +15,7 @@ import path from "node:path";
 
 import { build } from "esbuild";
 
+import { nativePlatform } from "../src/native-platform.mjs";
 import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
 import { readPackageManifest } from "./manifest.mjs";
 
@@ -102,12 +103,14 @@ try {
     `${names.toSorted().join("\n")}\n`
   );
   runMaven(["-Pnative", "package", "native:compile-no-fork"]);
-  const platform = `${process.platform}-${process.arch}`;
+  const platform = nativePlatform();
   const platformSpec = {
     "darwin-arm64": { os: ["darwin"], cpu: ["arm64"] },
     "darwin-x64": { os: ["darwin"], cpu: ["x64"] },
-    "linux-arm64": { os: ["linux"], cpu: ["arm64"] },
-    "linux-x64": { os: ["linux"], cpu: ["x64"] },
+    "linux-arm64-gnu": { os: ["linux"], cpu: ["arm64"], libc: ["glibc"] },
+    "linux-arm64-musl": { os: ["linux"], cpu: ["arm64"], libc: ["musl"] },
+    "linux-x64-gnu": { os: ["linux"], cpu: ["x64"], libc: ["glibc"] },
+    "linux-x64-musl": { os: ["linux"], cpu: ["x64"], libc: ["musl"] },
     "win32-x64": { os: ["win32"], cpu: ["x64"] }
   }[platform];
   if (!platformSpec) {
@@ -155,8 +158,7 @@ try {
         repository: manifest.repository,
         engines: manifest.engines,
         files: [executable, "TLA-LICENSE"],
-        os: platformSpec.os,
-        cpu: platformSpec.cpu
+        ...platformSpec
       },
       null,
       2
@@ -165,6 +167,7 @@ try {
 
   await build({
     absWorkingDir: root,
+    bundle: true,
     entryPoints: ["src/launcher.mts"],
     outfile: path.join(dist, "server.mjs"),
     platform: "node",

@@ -50,8 +50,10 @@
   "optionalDependencies": {
     "@tlaplus-mcp/tlaplus-mcp-darwin-arm64": "1.7.4-2026.11.19.1",
     "@tlaplus-mcp/tlaplus-mcp-darwin-x64": "1.7.4-2026.11.19.1",
-    "@tlaplus-mcp/tlaplus-mcp-linux-arm64": "1.7.4-2026.11.19.1",
-    "@tlaplus-mcp/tlaplus-mcp-linux-x64": "1.7.4-2026.11.19.1",
+    "@tlaplus-mcp/tlaplus-mcp-linux-arm64-gnu": "1.7.4-2026.11.19.1",
+    "@tlaplus-mcp/tlaplus-mcp-linux-arm64-musl": "1.7.4-2026.11.19.1",
+    "@tlaplus-mcp/tlaplus-mcp-linux-x64-gnu": "1.7.4-2026.11.19.1",
+    "@tlaplus-mcp/tlaplus-mcp-linux-x64-musl": "1.7.4-2026.11.19.1",
     "@tlaplus-mcp/tlaplus-mcp-win32-x64": "1.7.4-2026.11.19.1"
   },
   "engines": {

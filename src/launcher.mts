@@ -5,9 +5,11 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
+import { nativePlatform } from "./native-platform.mjs";
+
 const executable =
   process.platform === "win32" ? "tlaplus-server.exe" : "tlaplus-server";
-const platform = `${process.platform}-${process.arch}`;
+const platform = nativePlatform();
 const localServer = fileURLToPath(
   new URL(executable, new URL("../native/", import.meta.url))
 );
