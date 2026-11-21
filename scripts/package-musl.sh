@@ -14,12 +14,12 @@ case "$platform" in
     host_arch=aarch64
     ;;
   *)
-    printf 'Unsupported musl platform: %s\n' "$platform" >&2
+    echo "Unsupported musl platform: $platform" >&2
     exit 1
     ;;
 esac
-if [[ $(uname -m) != "$host_arch" ]]; then
-  printf "Expected a native %s runner for %s\n" "$host_arch" "$platform" >&2
+if [ "$(uname -m)" != "$host_arch" ]; then
+  echo "Expected a native $host_arch runner for $platform" >&2
   exit 1
 fi
 
@@ -53,14 +53,14 @@ docker run --rm --platform "linux/$docker_arch" \
     export JAVA_HOME=/opt/liberica GRAALVM_HOME=/opt/liberica
     export PATH="/opt/liberica/bin:$PATH"
     test "$(node --input-type=module -e "import {nativePlatform} from \"./src/native-platform.mjs\"; console.log(nativePlatform())")" = "$EXPECTED_PLATFORM"
-    printf "Alpine %s\n" "$(cat /etc/alpine-release)"
+    echo "Alpine $(cat /etc/alpine-release)"
     native-image --version
     mvn --version
     manager=$(node -p "require(\"./package.json\").packageManager")
     npx --yes "$manager" install --frozen-lockfile
-    npx --yes "$manager" run check:ultracite
     npm pack --pack-destination /packages
     npm pack ./npm --pack-destination /packages
+    npx --yes "$manager" run check:ultracite
     readelf -lW npm/tlaplus-server | grep -F "Requesting program interpreter: /lib/ld-musl-"
     readelf -dW npm/tlaplus-server
     if readelf --version-info -W npm/tlaplus-server | grep -Fq "GLIBC_"; then

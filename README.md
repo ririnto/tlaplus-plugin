@@ -105,7 +105,7 @@ The editor plugin skills cover adding a variable, splitting an action, and deriv
 ## Build a release
 
 Build the tarball on the target platform with Git, Node.js 24 LTS, Liberica Native Image Kit for JDK 25, and Maven.
-Build the musl targets on a matching Linux architecture with Docker and `bash scripts/package-musl.sh <platform>`.
+Build the musl targets on a matching Linux architecture with Docker, curl, jq, and `bash scripts/package-musl.sh <platform>`.
 The script uses the official Liberica NIK musl distribution inside Alpine.
 The Windows build uses x64 Visual Studio Build Tools 17.13.2 or later and the Windows 11 SDK.
 
@@ -130,7 +130,8 @@ Each tool call starts a worker process from the same executable to isolate TLA+ 
 The tarball includes upstream licenses and works offline after installation.
 
 `npm pack` runs the Kotlin contract tests before building the tarball.
-GitHub Actions builds, tests, and publishes the main package plus one platform package per target platform through trusted publishing.
+The pull request and release workflows share one build, test, and upload procedure.
+A release stamps the package version before the build and publishes the resulting tested tarballs through trusted publishing.
 
 Version the plugin by UTC build date and a two-digit build number, for example `2026.11.20.01`.
 Publish a release by pushing a Git tag with the plugin version, for example `2026.11.20.01`.

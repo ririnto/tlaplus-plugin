@@ -1,6 +1,11 @@
 name: Test release package
 on:
   pull_request:
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -30,10 +35,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: pnpm
+          cache: ${{ !endsWith(matrix.platform, '-musl') && 'pnpm' || '' }}
       - uses: graalvm/setup-graalvm@v1
         if: ${{ !endsWith(matrix.platform, '-musl') }}
         with:
@@ -56,8 +62,15 @@ jobs:
         env:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
       - run: pnpm install --frozen-lockfile
-      - name: Lint with Ultracite
-        run: pnpm run check:ultracite
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
+      - name: Stamp the release version
+        if: inputs.release_tag != ''
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |-
+          npm version "$(node scripts/release-version.mjs "$RELEASE_TAG")" --no-git-tag-version
+          node scripts/sync-optional-deps.mjs
       - name: Build and pack the main package
         if: runner.os != 'Windows' && !endsWith(matrix.platform, '-musl')
         run: npm pack
@@ -84,27 +97,30 @@ jobs:
       - name: Pack the platform package
         if: ${{ !endsWith(matrix.platform, '-musl') }}
         run: npm pack ./npm
+      - name: Lint with Ultracite
+        if: ${{ !endsWith(matrix.platform, '-musl') }}
+        run: pnpm run check:ultracite
       - name: Test the packed artifacts without Java on the consumer PATH
         if: ${{ !endsWith(matrix.platform, '-musl') }}
         shell: bash
         run: |-
           main=$(find . -maxdepth 1 -name 'tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz' -print -quit)
           platform=$(find . -maxdepth 1 -name "tlaplus-mcp-tlaplus-mcp-${{ matrix.platform }}-[0-9]*.tgz" -print -quit)
-          if [[ -z "$main" || -z "$platform" ]]; then
+          if [ -z "$main" ] || [ -z "$platform" ]; then
             echo "Expected the main and platform tarballs" >&2
             exit 1
           fi
-          if [[ "$RUNNER_OS" == Linux ]]; then
+          if [ "$RUNNER_OS" = Linux ]; then
             elf=$(mktemp)
             trap 'rm -f "$elf"' EXIT
             tar -xOf "$platform" package/tlaplus-server > "$elf"
-            printf 'Runner libc: %s\n' "$(getconf GNU_LIBC_VERSION)"
+            echo "Runner libc: $(getconf GNU_LIBC_VERSION)"
             readelf -lW "$elf"
             readelf -dW "$elf"
             version_needs=$(LC_ALL=C readelf --version-info -W "$elf" | sed -n '/^Version needs section/,$p')
             printf '%s\n' "$version_needs"
             required_glibc=$(printf '%s\n' "$version_needs" | grep -oE 'GLIBC_[0-9]+(\.[0-9]+)+' | sort -Vu | tail -n 1)
-            printf 'Highest required glibc version: %s\n' "$required_glibc"
+            echo "Highest required glibc version: $required_glibc"
           fi
           npm test -- "$main" "$platform"
       - name: Build, pack, and test in Alpine
