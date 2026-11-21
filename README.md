@@ -6,15 +6,15 @@ The npm package includes a native Spring AI stdio server with the official TLA+ 
 ## Use the package
 
 Install Node.js 24 or later.
-Install `@ririnto/tlaplus-plugin` from the npm registry.
+Install `@ririnto/tlaplus` from the npm registry.
 The package pulls the native server binary for the current platform through `optionalDependencies`, so Linux x64, Linux ARM64, macOS ARM64, and Windows x64 all install with one command.
 
 ```sh
-npm install @ririnto/tlaplus-plugin
-npm exec -- tlaplus-plugin
+npm install @ririnto/tlaplus
+npm exec -- tlaplus
 ```
 
-`npx -y @ririnto/tlaplus-plugin` starts the server without a local install.
+`npx -y @ririnto/tlaplus` starts the server without a local install.
 
 ### Register the MCP server
 
@@ -23,7 +23,7 @@ Every command below runs the npm release, so the host fetches the package from t
 Claude Code:
 
 ```sh
-claude mcp add tlaplus -- npx -y @ririnto/tlaplus-plugin
+claude mcp add tlaplus -- npx -y @ririnto/tlaplus
 ```
 
 Codex, in `~/.codex/config.toml`:
@@ -31,7 +31,7 @@ Codex, in `~/.codex/config.toml`:
 ```toml
 [mcp_servers.tlaplus]
 command = "npx"
-args = ["-y", "@ririnto/tlaplus-plugin"]
+args = ["-y", "@ririnto/tlaplus"]
 ```
 
 Cursor, in `~/.cursor/mcp.json`:
@@ -41,14 +41,14 @@ Cursor, in `~/.cursor/mcp.json`:
   "mcpServers": {
     "tlaplus": {
       "command": "npx",
-      "args": ["-y", "@ririnto/tlaplus-plugin"]
+      "args": ["-y", "@ririnto/tlaplus"]
     }
   }
 }
 ```
 
-For a general MCP client, set `command` to `npx` with the arguments `-y @ririnto/tlaplus-plugin`.
-In an npm project you can instead set `command` to `node` with `node_modules/@ririnto/tlaplus-plugin/dist/server.mjs`, or run the platform binary directly from `node_modules/@ririnto/tlaplus-plugin-<platform>/tlaplus-server`.
+For a general MCP client, set `command` to `npx` with the arguments `-y @ririnto/tlaplus`.
+In an npm project you can instead set `command` to `node` with `node_modules/@ririnto/tlaplus/dist/server.mjs`, or run the platform binary directly from `node_modules/@ririnto/tlaplus-<platform>/tlaplus-server`.
 The executable includes the TLA+ standard modules and the knowledge base.
 The server writes JSON-RPC to stdout and its own diagnostics to stderr.
 Only run trusted specifications and worker options.
@@ -59,8 +59,8 @@ Claude Code, Codex, and Cursor manifests are included and start the npm release.
 Point your host at the installed package directory. For example, from the npm project:
 
 ```sh
-claude --plugin-dir ./node_modules/@ririnto/tlaplus-plugin
-codex plugin marketplace add ./node_modules/@ririnto/tlaplus-plugin
+claude --plugin-dir ./node_modules/@ririnto/tlaplus
+codex plugin marketplace add ./node_modules/@ririnto/tlaplus
 codex plugin add tlaplus-plugin@tlaplus-plugin
 ```
 

@@ -79,8 +79,8 @@ jobs:
       - name: Test the packed artifacts without Java on the consumer PATH
         shell: bash
         run: |-
-          main=$(find . -maxdepth 1 -name 'ririnto-tlaplus-plugin-[0-9]*.tgz' -print -quit)
-          platform=$(find . -maxdepth 1 -name "ririnto-tlaplus-plugin-${{ matrix.platform }}-*.tgz" -print -quit)
+          main=$(find . -maxdepth 1 -name 'ririnto-tlaplus-[0-9]*.tgz' -print -quit)
+          platform=$(find . -maxdepth 1 -name "ririnto-tlaplus-${{ matrix.platform }}-*.tgz" -print -quit)
           npm test -- "$main" "$platform"
       - uses: actions/upload-artifact@v7
         with:

@@ -54,11 +54,9 @@ try {
   }
   const entries = await readdir(directory);
   const packed = entries.filter((name) => name.endsWith(".tgz"));
-  const mainName = packed.find((name) =>
-    /^ririnto-tlaplus-plugin-[0-9]/u.test(name)
-  );
+  const mainName = packed.find((name) => /^ririnto-tlaplus-[0-9]/u.test(name));
   const platformName = packed.find((name) =>
-    /^ririnto-tlaplus-plugin-(?:darwin|linux|win32)-/u.test(name)
+    /^ririnto-tlaplus-(?:darwin|linux|win32)-/u.test(name)
   );
   mainTarball ??=
     mainName === undefined ? undefined : path.join(directory, mainName);
@@ -114,7 +112,7 @@ try {
       stdio: "inherit"
     }
   );
-  const installed = path.join(consumer, "node_modules/@ririnto/tlaplus-plugin");
+  const installed = path.join(consumer, "node_modules/@ririnto/tlaplus");
   const { version } = await readPackageManifest(
     path.join(installed, "package.json")
   );

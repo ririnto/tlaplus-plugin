@@ -1,6 +1,6 @@
 {
   "name": "tlaplus-plugin",
-  "version": "2026.11.19.02",
+  "version": "1.7.4-2026.11.19.1",
   "description": "Parse TLA+ specifications, check models with TLC, and read TLA+ modeling guidance.",
   "author": {
     "name": "ririnto"
@@ -12,7 +12,7 @@
     "tlaplus": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@ririnto/tlaplus-plugin"]
+      "args": ["-y", "@ririnto/tlaplus"]
     }
   }
 }

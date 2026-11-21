@@ -148,7 +148,7 @@ try {
     path.join(platformPackage, "package.json"),
     `${JSON.stringify(
       {
-        name: `@ririnto/tlaplus-plugin-${platform}`,
+        name: `@ririnto/tlaplus-${platform}`,
         version: manifest.version,
         description: `Native TLA+ server binary for ${platform}.`,
         license: manifest.license,
