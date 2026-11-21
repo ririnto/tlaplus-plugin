@@ -52,7 +52,15 @@ const checkout = (repo, paths) => {
   );
   execFileSync(
     "git",
-    ["checkout", "--quiet", "FETCH_HEAD", "--", ...paths],
+    [
+      "-c",
+      "core.autocrlf=false",
+      "checkout",
+      "--quiet",
+      "FETCH_HEAD",
+      "--",
+      ...paths
+    ],
     options
   );
   return cwd;
