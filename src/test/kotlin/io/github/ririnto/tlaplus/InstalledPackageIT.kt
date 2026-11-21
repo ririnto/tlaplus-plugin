@@ -38,6 +38,7 @@ class InstalledPackageIT : FunSpec({
             article.path("mimeType").asString() shouldBe "text/markdown"
             val knowledge = client.consumer.resolve("node_modules/@tlaplus-mcp/tlaplus-mcp/dist/knowledgebase")
             article.path("text").asString() shouldBe knowledge.resolve("tlc-config-files.md").readText()
+            article.path("text").asString().contains('\r') shouldBe false
             Files.exists(knowledge.resolveSibling("runtimes")) shouldBe false
         }
     }
