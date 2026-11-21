@@ -15,16 +15,42 @@ import { pathToFileURL } from "node:url";
 
 import { linuxLibc, nativePlatform } from "../src/native-platform.mjs";
 import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
-import { readPackageManifest } from "./manifest.mjs";
+import { readManifest, readPackageManifest } from "./manifest.mjs";
+import { tlaDistTag } from "./tla-version.mjs";
 
 const npm = process.env.npm_execpath;
 if (npm === undefined || npm.length === 0) {
   throw new Error("Run this check with npm test");
 }
+const packageName = "@tlaplus-mcp/tlaplus-mcp";
+await Promise.all(
+  ["claude", "codex", "cursor"].map(async (editor) => {
+    const file = path.join(root, `.${editor}-plugin/plugin.json`);
+    const { mcpServers } = await readManifest(file);
+    assert.ok(
+      mcpServers !== null &&
+        typeof mcpServers === "object" &&
+        "tlaplus" in mcpServers,
+      `Expected a TLA+ MCP server in ${file}`
+    );
+    /** @type {unknown} */
+    const server = mcpServers.tlaplus;
+    assert.ok(
+      server !== null &&
+        typeof server === "object" &&
+        "command" in server &&
+        "args" in server,
+      `Expected an MCP command and arguments in ${file}`
+    );
+    assert.equal(server.command, "npx", file);
+    assert.deepEqual(server.args, ["-y", `${packageName}@${tlaDistTag}`], file);
+  })
+);
+console.log(`Editor MCP manifests install with npm dist-tag ${tlaDistTag}`);
+
 const directory = await mkdtemp(path.join(tmpdir(), "tlaplus-consumer-"));
 const consumer = path.join(directory, "consumer project");
 const platform = nativePlatform();
-const packageName = "@tlaplus-mcp/tlaplus-mcp";
 try {
   const mainArg = process.argv.at(2);
   const platformArg = process.argv.at(3);

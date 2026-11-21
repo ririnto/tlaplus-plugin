@@ -153,7 +153,7 @@ jobs:
         shell: bash
         run: |-
           version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
-          dist_tag="tlaplus-${version%%-*}"
+          dist_tag=$(node --input-type=module -e 'import { tlaDistTag } from "./scripts/tla-version.mjs"; console.log(tlaDistTag)')
           tarballs=(
             release-packages/tlaplus-mcp-tlaplus-mcp-{darwin-arm64,darwin-x64,linux-arm64-gnu,linux-arm64-musl,linux-x64-gnu,linux-x64-musl,win32-x64}-"$version".tgz
             release-packages/tlaplus-mcp-tlaplus-mcp-"$version".tgz
