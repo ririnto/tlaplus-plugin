@@ -134,6 +134,7 @@ jobs:
           ALPINE_CONTAINER: ${{ matrix.alpine_container }}
           CONTAINER_ARCH: ${{ matrix.container_arch }}
           EXPECTED_PLATFORM: ${{ matrix.platform }}
+          GH_TOKEN: ${{ github.token }}
           HOST_ARCH: ${{ matrix.host_arch }}
           JDK_ARCH: ${{ matrix.jdk_arch }}
         run: |-
@@ -147,8 +148,7 @@ jobs:
           mkdir "$stage/output"
           git ls-files -z | tar -cf "$stage/source.tar" --null -T -
 
-          release_asset=$(curl --fail --silent --show-error --location \
-            'https://api.github.com/repos/bell-sw/LibericaNIK/releases?per_page=30' |
+          release_asset=$(gh api 'repos/bell-sw/LibericaNIK/releases?per_page=30' |
             jq -cer --arg suffix "-linux-$JDK_ARCH-musl.tar.gz" '
               first(.[] | select(.draft == false and .prerelease == false and (.tag_name | startswith("25.")))
                 | .assets[]
