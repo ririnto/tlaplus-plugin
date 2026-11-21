@@ -11,7 +11,6 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { linuxLibc, nativePlatform } from "../src/native-platform.mjs";
 import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
@@ -127,12 +126,13 @@ try {
     throw new Error("Java is available in the consumer environment");
   }
   console.log("Consumer environment has no Java executable or JAVA_HOME");
+  await copyFile(platformTarball, path.join(consumer, "platform.tgz"));
   await writeFile(
     path.join(consumer, "package.json"),
     JSON.stringify({
       private: true,
       overrides: {
-        [`${packageName}-${platform}`]: pathToFileURL(platformTarball).href
+        [`${packageName}-${platform}`]: "file:./platform.tgz"
       }
     })
   );
