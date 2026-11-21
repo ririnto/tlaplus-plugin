@@ -14,11 +14,9 @@ import {
 import path from "node:path";
 
 import { build } from "esbuild";
-import { format } from "oxfmt";
 
-import formatterConfig from "../oxfmt.config.ts";
 import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
-import { readManifest, readPackageManifest } from "./manifest.mjs";
+import { readPackageManifest } from "./manifest.mjs";
 
 const manifest = await readPackageManifest(path.join(root, "package.json"));
 const localGitVariables = new Set(
@@ -172,27 +170,6 @@ try {
     format: "esm"
   });
   await chmod(path.join(dist, "server.mjs"), 0o755);
-  await Array.fromAsync(
-    [
-      ".claude-plugin/plugin.json",
-      ".codex-plugin/plugin.json",
-      ".cursor-plugin/plugin.json"
-    ],
-    async (manifestName) => {
-      const file = path.join(root, manifestName);
-      const pluginManifest = await readManifest(file);
-      pluginManifest.version = manifest.version;
-      const { code, errors } = await format(
-        file,
-        JSON.stringify(pluginManifest, null, 2),
-        formatterConfig
-      );
-      if (errors.length > 0) {
-        throw new Error(`Could not format ${manifestName}`, { cause: errors });
-      }
-      await writeFile(file, code);
-    }
-  );
   await Array.fromAsync(["dist", "skills", "native", "npm"], async (name) => {
     await rm(path.join(root, name), { recursive: true, force: true });
     await rename(path.join(stage, name), path.join(root, name));

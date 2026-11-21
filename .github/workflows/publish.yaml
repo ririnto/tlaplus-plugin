@@ -58,8 +58,8 @@ jobs:
         run: |-
           version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
           npm version "$version" --no-git-tag-version
-      - name: Sync platform package versions
-        run: node scripts/sync-optional-deps.mjs
+      - name: Sync platform package and editor plugin versions
+        run: node scripts/sync-release-versions.mjs
       - name: Build
         if: runner.os != 'Windows'
         run: node scripts/build.mjs
