@@ -9,6 +9,10 @@ Install Node.js 24 or later.
 Install `@tlaplus-mcp/tlaplus-mcp` from the npm registry.
 The package pulls the native server binary for the current platform through `optionalDependencies`, so Linux x64, Linux ARM64, macOS ARM64, macOS x64, and Windows x64 all install with one command.
 
+Windows ARM64 (`win32-arm64`) is unsupported because neither of the project's JDK 25 Native Image toolchains targets it.
+The npm name `@tlaplus-mcp/tlaplus-mcp-win32-arm64` is reserved.
+Add it to the release matrices only after a native ARM64 build passes the same Java-free consumer tests as the other platforms.
+
 ```sh
 npm install @tlaplus-mcp/tlaplus-mcp
 npm exec -- tlaplus-mcp
