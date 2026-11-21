@@ -90,8 +90,12 @@ jobs:
       - name: Test the packed artifacts without Java on the consumer PATH
         shell: bash
         run: |-
-          main=$(find . -maxdepth 1 -name 'ririnto-tlaplus-[0-9]*.tgz' -print -quit)
-          platform=$(find . -maxdepth 1 -name "ririnto-tlaplus-${{ matrix.platform }}-*.tgz" -print -quit)
+          main=$(find . -maxdepth 1 -name 'tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz' -print -quit)
+          platform=$(find . -maxdepth 1 -name "tlaplus-mcp-tlaplus-mcp-${{ matrix.platform }}-[0-9]*.tgz" -print -quit)
+          if [[ -z "$main" || -z "$platform" ]]; then
+            echo "Expected the main and platform tarballs" >&2
+            exit 1
+          fi
           npm test -- "$main" "$platform"
       - uses: actions/upload-artifact@v7
         with:
@@ -115,12 +119,29 @@ jobs:
         with:
           pattern: npm-package-*
           path: packages
-      - name: Publish every platform package, then the main package
+      - name: Select one tarball per npm package
+        shell: bash
         run: |-
-          find packages -name '*.tgz' ! -name 'ririnto-tlaplus-[0-9]*' -print0 | xargs -0 -n1 npm publish --tag latest
-          main=$(find packages -name 'ririnto-tlaplus-[0-9]*.tgz' -print -quit)
-          npm publish "$main" --tag latest
+          mkdir release-packages
+          copy_tarball() {
+            if [[ "$#" -ne 1 || ! -f "$1" ]]; then
+              printf 'Expected exactly one tarball for %s\n' "$1" >&2
+              exit 1
+            fi
+            cp "$1" release-packages/
+          }
+          copy_tarball packages/npm-package-linux-x64/tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz
+          for platform in darwin-arm64 linux-arm64 linux-x64 win32-x64; do
+            copy_tarball "packages/npm-package-$platform/tlaplus-mcp-tlaplus-mcp-$platform-"[0-9]*.tgz
+          done
+      - name: Publish every platform package, then the main package
+        shell: bash
+        run: |-
+          for tarball in release-packages/tlaplus-mcp-tlaplus-mcp-{darwin-arm64,linux-arm64,linux-x64,win32-x64}-[0-9]*.tgz; do
+            npm publish "$tarball" --access public --tag latest
+          done
+          npm publish release-packages/tlaplus-mcp-tlaplus-mcp-[0-9]*.tgz --access public --tag latest
       - name: Create the GitHub release carrying the published npm tarballs
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes $(find packages -name '*.tgz')
+        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes release-packages/*.tgz

@@ -1,5 +1,5 @@
 {
-  "name": "@ririnto/tlaplus",
+  "name": "@tlaplus-mcp/tlaplus-mcp",
   "version": "1.7.4-2026.11.19.1",
   "description": "Parse TLA+ specifications, check models with TLC, and read TLA+ modeling guidance.",
   "license": "MIT",
@@ -9,7 +9,7 @@
     "url": "git+https://github.com/ririnto/tlaplus-plugin.git"
   },
   "bin": {
-    "tlaplus": "dist/server.mjs"
+    "tlaplus-mcp": "dist/server.mjs"
   },
   "files": [
     "dist/",
@@ -53,10 +53,10 @@
     "ultracite": "catalog:"
   },
   "optionalDependencies": {
-    "@ririnto/tlaplus-darwin-arm64": "1.7.4-2026.11.19.1",
-    "@ririnto/tlaplus-linux-arm64": "1.7.4-2026.11.19.1",
-    "@ririnto/tlaplus-linux-x64": "1.7.4-2026.11.19.1",
-    "@ririnto/tlaplus-win32-x64": "1.7.4-2026.11.19.1"
+    "@tlaplus-mcp/tlaplus-mcp-darwin-arm64": "1.7.4-2026.11.19.1",
+    "@tlaplus-mcp/tlaplus-mcp-linux-arm64": "1.7.4-2026.11.19.1",
+    "@tlaplus-mcp/tlaplus-mcp-linux-x64": "1.7.4-2026.11.19.1",
+    "@tlaplus-mcp/tlaplus-mcp-win32-x64": "1.7.4-2026.11.19.1"
   },
   "engines": {
     "node": ">=24"

@@ -11,7 +11,7 @@
     "tlaplus": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@ririnto/tlaplus"]
+      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp"]
     }
   }
 }

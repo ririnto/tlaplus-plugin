@@ -54,9 +54,13 @@ try {
   }
   const entries = await readdir(directory);
   const packed = entries.filter((name) => name.endsWith(".tgz"));
-  const mainName = packed.find((name) => /^ririnto-tlaplus-[0-9]/u.test(name));
+  const mainName = packed.find((name) =>
+    /^tlaplus-mcp-tlaplus-mcp-[0-9]/u.test(name)
+  );
   const platformName = packed.find((name) =>
-    /^ririnto-tlaplus-(?:darwin|linux|win32)-/u.test(name)
+    name.startsWith(
+      `tlaplus-mcp-tlaplus-mcp-${process.platform}-${process.arch}-`
+    )
   );
   mainTarball ??=
     mainName === undefined ? undefined : path.join(directory, mainName);
@@ -112,7 +116,10 @@ try {
       stdio: "inherit"
     }
   );
-  const installed = path.join(consumer, "node_modules/@ririnto/tlaplus");
+  const installed = path.join(
+    consumer,
+    "node_modules/@tlaplus-mcp/tlaplus-mcp"
+  );
   const { version } = await readPackageManifest(
     path.join(installed, "package.json")
   );

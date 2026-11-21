@@ -36,7 +36,7 @@ class InstalledPackageIT : FunSpec({
             val article = client.call("resources/read", mapOf("uri" to uri)).path("contents").get(0)
             article.path("uri").asString() shouldBe uri
             article.path("mimeType").asString() shouldBe "text/markdown"
-            val knowledge = client.consumer.resolve("node_modules/@ririnto/tlaplus/dist/knowledgebase")
+            val knowledge = client.consumer.resolve("node_modules/@tlaplus-mcp/tlaplus-mcp/dist/knowledgebase")
             article.path("text").asString() shouldBe knowledge.resolve("tlc-config-files.md").readText()
             Files.exists(knowledge.resolveSibling("runtimes")) shouldBe false
         }
@@ -288,13 +288,13 @@ private class WireClient(root: Path, launch: Launch) : AutoCloseable {
 
     init {
         val node = checkNotNull(System.getProperty("consumer.node"))
-        val dist = consumer.resolve("node_modules/@ririnto/tlaplus/dist")
+        val dist = consumer.resolve("node_modules/@tlaplus-mcp/tlaplus-mcp/dist")
         val command = when (launch) {
             Launch.NPM -> listOf(
                 node,
                 Path(checkNotNull(System.getProperty("consumer.npm"))).parent.resolve("npx-cli.js").toString(),
                 "--offline",
-                "@ririnto/tlaplus"
+                "@tlaplus-mcp/tlaplus-mcp"
             )
             Launch.WRAPPER -> listOf(node, dist.resolve("server.mjs").toString())
             Launch.STANDALONE -> {
@@ -313,7 +313,7 @@ private class WireClient(root: Path, launch: Launch) : AutoCloseable {
                         false -> "tlaplus-server"
                     }
                 val binary = Files.copy(
-                    consumer.resolve("node_modules/@ririnto/tlaplus-$platform/$name"),
+                    consumer.resolve("node_modules/@tlaplus-mcp/tlaplus-mcp-$platform/$name"),
                     root.resolve(name),
                     COPY_ATTRIBUTES
                 )
