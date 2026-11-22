@@ -33,3 +33,4 @@ Run TLC separately by selecting the model and configuration in the TLC tool.
 
 When the host supports sharing text with the thread, **Share selected state** sends the visible state number and its variable values.
 Opening the tab, loading a file, and stepping through states leave the thread context untouched.
+The host manages any state you already shared when you clear or close the viewer.

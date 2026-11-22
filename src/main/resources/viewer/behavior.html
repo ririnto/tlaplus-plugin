@@ -12,7 +12,8 @@
       :root {
         color-scheme: light dark;
         font:
-          100%/1.5 system-ui,
+          100%/1.5 Inter,
+          system-ui,
           sans-serif;
         --muted: light-dark(#46586b, #a9bacb);
         --line: light-dark(#c6d2de, #465565);
@@ -195,7 +196,7 @@
       function parseStates(blocks) {
         const parsed = [];
         for (const block of blocks) {
-          const { number, values } = block.groups;
+          const { number = "1", values } = block.groups;
           const lines = values.trim().split("\n");
           const current = new Map();
           for (const line of lines) {
@@ -271,10 +272,16 @@
         }
         if (payload.failed && counterexampleExits.has(payload.exitCode)) {
           const output = payload.stdout.replaceAll("\r\n", "\n");
+          const initialViolation =
+            /^@!@!@STARTMSG 2107:1 @!@!@\n[^\n]*\n(?<values>[\s\S]*?)\n@!@!@ENDMSG 2107 @!@!@$/mu.exec(
+              output
+            );
           const trace = parseStates(
-            output.matchAll(
-              /^@!@!@STARTMSG 2217:4 @!@!@\n(?<number>\d+): [^\n]*\n(?<values>[\s\S]*?)\n@!@!@ENDMSG 2217 @!@!@$/gmu
-            )
+            initialViolation
+              ? [initialViolation]
+              : output.matchAll(
+                  /^@!@!@STARTMSG 2217:4 @!@!@\n(?<number>\d+): [^\n]*\n(?<values>[\s\S]*?)\n@!@!@ENDMSG 2217 @!@!@$/gmu
+                )
           );
           const loop = /^@!@!@STARTMSG 2122:4 @!@!@\n(?<target>\d+): /mu.exec(
             output
@@ -396,7 +403,9 @@
             status.textContent =
               error instanceof SyntaxError
                 ? "Choose a valid TLC result JSON file."
-                : error.message;
+                : error instanceof DOMException
+                  ? "The selected file could not be read."
+                  : error.message;
           }
         }
       });
