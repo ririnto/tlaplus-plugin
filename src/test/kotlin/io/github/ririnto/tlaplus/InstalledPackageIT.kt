@@ -2,6 +2,7 @@ package io.github.ririnto.tlaplus
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
@@ -18,6 +19,9 @@ private const val SANY = "tlaplus_mcp_sany_parse"
 private const val CHECK = "tlaplus_mcp_tlc_check"
 private const val SMOKE = "tlaplus_mcp_tlc_smoke"
 private const val EXPLORE = "tlaplus_mcp_tlc_explore"
+private const val VIEWER = "tlaplus_mcp_behavior_viewer"
+private const val VIEWER_URI = "ui://tlaplus/behavior-viewer"
+private val nativeName = if (ToolInput.isWindows) "tlaplus-server.exe" else "tlaplus-server"
 private val outputFields = setOf("exitCode", "signal", "stdout", "stderr", "truncated", "failed")
 private val depth = Regex("(?m)^\"TLAPLUS_DEPTH=(\\d+)\"$")
 private val state = Regex("(?m)^STATE_(\\d+) == ")
@@ -44,15 +48,57 @@ class InstalledPackageIT : FunSpec({
     }
 
     test("the extracted executable starts alone and serves embedded content") {
-        withClient(Launch.STANDALONE) { client, _ ->
+        withClient(Launch.STANDALONE) { client, directory ->
             val tools = client.call("tools/list").path("tools")
             val expected = javaClass.getResourceAsStream("/contract/tools.json")!!.use { json.readTree(it) }
             tools shouldBe expected
+            client.call("resources/list").path("resources").none { it.path("uri").asString() == VIEWER_URI } shouldBe true
             val uri = "tlaplus://knowledge/tlc-config-files.md"
             val article = client.call("resources/read", mapOf("uri" to uri)).path("contents").get(0)
             article.path("text").asString().isNotBlank() shouldBe true
             val parse = client.tool(SANY, mapOf("fileName" to Path("examples/Counter.tla").absolutePathString()))
             ("Semantic processing of module Counter" in success(parse).path("stdout").asString()) shouldBe true
+
+            val output = directory.resolve("behavior.html")
+            val viewer = ProcessBuilder(directory.resolve(nativeName).toString(), "--behavior-viewer")
+                .directory(directory.toFile())
+                .redirectErrorStream(true)
+                .redirectOutput(output.toFile())
+                .apply { environment()["PATH"] = directory.toString() }
+                .start()
+            try {
+                viewer.outputStream.close()
+                viewer.waitFor(15, TimeUnit.SECONDS) shouldBe true
+                viewer.exitValue() shouldBe 0
+                output.readText() shouldBe Path("src/main/resources/viewer/behavior.html").readText()
+            } finally {
+                if (viewer.isAlive) {
+                    viewer.destroyForcibly().waitFor()
+                }
+            }
+        }
+    }
+
+    test("an opted-in server advertises only a thread entrypoint and opens an empty viewer") {
+        withClient(viewerEnabled = true) { client, _ ->
+            val advertised = client.call("tools/list").path("tools")
+            val originals = javaClass.getResourceAsStream("/contract/tools.json")!!.use { json.readTree(it) }
+            advertised.filter { it.path("name").asString() != VIEWER } shouldBe originals.toList()
+            val entrypoint = advertised.single { it.path("name").asString() == VIEWER }
+            entrypoint.path("title").asString() shouldBe "TLC Behavior Viewer"
+            entrypoint.path("_meta") shouldBe json.readTree(
+                """{"ui":{"resourceUri":"$VIEWER_URI","visibility":["app"]},"openai/ui":{"entrypoints":[{"type":"thread"}]}}"""
+            )
+            val opening = client.tool(VIEWER, emptyMap())
+            opening.path("isError").asBoolean() shouldBe false
+            opening.path("content").size() shouldBe 0
+            client.tool(VIEWER, mapOf("fileName" to "/unselected.tla")).path("isError").asBoolean() shouldBe true
+
+            val resource = client.call("resources/read", mapOf("uri" to VIEWER_URI)).path("contents").single()
+            resource.path("uri").asString() shouldBe VIEWER_URI
+            resource.path("mimeType").asString() shouldBe "text/html;profile=mcp-app"
+            resource.path("text").asString() shouldContain "<h1>TLC Behavior Viewer</h1>"
+            client.requestDirectories().isEmpty() shouldBe true
         }
     }
 
@@ -255,11 +301,12 @@ private enum class Launch { NPM, WRAPPER, STANDALONE }
 private fun withClient(
     launch: Launch = Launch.WRAPPER,
     protocolVersion: String = "2025-11-25",
+    viewerEnabled: Boolean = false,
     action: (WireClient, Path) -> Unit
 ) {
     val root = Files.createTempDirectory("tlaplus-wire-")
     try {
-        WireClient(root, launch).use { client ->
+        WireClient(root, launch, viewerEnabled).use { client ->
             client.initialize(protocolVersion)
             action(client, root)
         }
@@ -276,7 +323,7 @@ private fun awaitCondition(description: String, test: () -> Boolean) {
     }
 }
 
-private class WireClient(root: Path, launch: Launch) : AutoCloseable {
+private class WireClient(root: Path, launch: Launch, viewerEnabled: Boolean) : AutoCloseable {
     val consumer = Path(checkNotNull(System.getProperty("consumer.directory")))
     private val stderr = root.resolve("stderr")
     private val runtime = Files.createDirectory(root.resolve("runtime"))
@@ -300,14 +347,9 @@ private class WireClient(root: Path, launch: Launch) : AutoCloseable {
             Launch.WRAPPER -> listOf(node, dist.resolve("server.mjs").toString())
             Launch.STANDALONE -> {
                 val platform = checkNotNull(System.getProperty("consumer.platform"))
-                val name =
-                    when (ToolInput.isWindows) {
-                        true -> "tlaplus-server.exe"
-                        false -> "tlaplus-server"
-                    }
                 val binary = Files.copy(
-                    consumer.resolve("node_modules/@tlaplus-mcp/tlaplus-mcp-$platform/$name"),
-                    root.resolve(name),
+                    consumer.resolve("node_modules/@tlaplus-mcp/tlaplus-mcp-$platform/$nativeName"),
+                    root.resolve(nativeName),
                     COPY_ATTRIBUTES
                 )
                 listOf(binary.toString(), "-Djava.io.tmpdir=$runtime")
@@ -321,6 +363,7 @@ private class WireClient(root: Path, launch: Launch) : AutoCloseable {
                 key.equals("JDK_HOME", ignoreCase = true) || key.equals("JRE_HOME", ignoreCase = true)
         }
         environment["PATH"] = (if (launch == Launch.STANDALONE) runtime else Path(node).parent).toString()
+        environment["TLAPLUS_BEHAVIOR_VIEWER"] = if (viewerEnabled) "1" else "0"
         if (launch == Launch.NPM && !ToolInput.isWindows) environment["npm_config_script_shell"] = "/bin/sh"
         for (name in listOf("TMPDIR", "TEMP", "TMP")) builder.environment()[name] = runtime.toString()
         builder.environment()["SPRING_MAIN_BANNER_MODE"] = "console"

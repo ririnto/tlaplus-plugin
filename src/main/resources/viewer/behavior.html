@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+    />
+    <title>TLC Behavior Viewer</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font:
+          100%/1.5 system-ui,
+          sans-serif;
+        --muted: light-dark(#46586b, #a9bacb);
+        --line: light-dark(#c6d2de, #465565);
+        --changed: light-dark(#e5f0ff, #183554);
+        --accent: light-dark(#174e86, #9fcaff);
+      }
+      body {
+        margin: 0;
+        background: Canvas;
+        color: CanvasText;
+      }
+      main {
+        max-width: 64rem;
+        margin: auto;
+        padding: clamp(1rem, 5vw, 3rem);
+      }
+      h1 {
+        font-size: clamp(1.75rem, 4vw, 2.5rem);
+        line-height: 1.2;
+        margin: 0;
+      }
+      h2 {
+        margin-block: 0 0.5rem;
+      }
+      p {
+        color: var(--muted);
+        margin-block: 0.5rem 1rem;
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .import {
+        margin-block: 1.5rem;
+      }
+      .import input {
+        max-width: 100%;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      button,
+      input::file-selector-button {
+        border: 1px solid var(--line);
+        border-radius: 0.35rem;
+        padding: 0.35rem 0.7rem;
+        background: Canvas;
+        color: CanvasText;
+      }
+      button:enabled,
+      input::file-selector-button {
+        cursor: pointer;
+      }
+      button:enabled:hover,
+      input::file-selector-button:hover {
+        background: var(--changed);
+      }
+      button:disabled {
+        color: var(--muted);
+        opacity: 0.65;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      #result {
+        border-top: 1px solid var(--line);
+        padding-top: 1.25rem;
+      }
+      #position {
+        width: 7ch;
+      }
+      #summary {
+        margin-bottom: 0.6rem;
+      }
+      table {
+        border-collapse: collapse;
+        table-layout: fixed;
+        width: 100%;
+      }
+      caption {
+        text-align: left;
+        color: var(--muted);
+        margin-bottom: 0.5rem;
+      }
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 0.55rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th:first-child {
+        width: 24%;
+        overflow-wrap: anywhere;
+      }
+      tr.changed {
+        background: var(--changed);
+      }
+      small {
+        display: block;
+        color: var(--muted);
+        font-weight: normal;
+      }
+      code {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>TLC Behavior Viewer</h1>
+        <p>
+          Open a saved TLC explore or model-check result to inspect its states.
+        </p>
+      </header>
+      <div class="bar import">
+        <label for="import">TLC result (.json)</label>
+        <input id="import" type="file" accept=".json,application/json" />
+        <button id="clear" type="button" disabled>Clear</button>
+      </div>
+      <p id="status" role="status"></p>
+      <section id="result" aria-labelledby="kind" hidden>
+        <h2 id="kind"></h2>
+        <p id="ending" hidden></p>
+        <div id="states" hidden>
+          <div class="bar">
+            <button id="previous" type="button">Previous</button>
+            <label for="position">State</label>
+            <input id="position" type="number" min="1" step="1" />
+            <span id="total"></span>
+            <button id="next" type="button">Next</button>
+            <button id="share" type="button" hidden>
+              Share selected state
+            </button>
+          </div>
+          <p id="summary" role="status"></p>
+          <table>
+            <caption>
+              Variable values
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Variable</th>
+                <th scope="col">Previous</th>
+                <th scope="col">Current</th>
+              </tr>
+            </thead>
+            <tbody id="variables"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script>
+      "use strict";
+
+      const fileInput = document.getElementById("import");
+      const clear = document.getElementById("clear");
+      const status = document.getElementById("status");
+      const result = document.getElementById("result");
+      const kind = document.getElementById("kind");
+      const ending = document.getElementById("ending");
+      const states = document.getElementById("states");
+      const previous = document.getElementById("previous");
+      const position = document.getElementById("position");
+      const next = document.getElementById("next");
+      const total = document.getElementById("total");
+      const summary = document.getElementById("summary");
+      const variables = document.getElementById("variables");
+      const counterexampleExits = new Set([11, 12, 13, 14]);
+      let trace = [];
+      let selected = 0;
+      let revision = 0;
+
+      function parseStates(blocks) {
+        const parsed = [];
+        for (const block of blocks) {
+          const { number, values } = block.groups;
+          const lines = values.trim().split("\n");
+          const current = new Map();
+          for (const line of lines) {
+            const assignment =
+              /^(?:\/\\ )?(?<name>[a-z_0-9]+) = (?<value>.+)$/iu.exec(line);
+            if (!assignment || (lines.length > 1 && !line.startsWith("/\\ "))) {
+              return [];
+            }
+            current.set(assignment.groups.name, assignment.groups.value);
+          }
+          const initial = parsed[0];
+          if (
+            Number(number) !== parsed.length + 1 ||
+            current.size !== lines.length ||
+            (initial &&
+              (current.size !== initial.size ||
+                [...initial.keys()].some((name) => !current.has(name))))
+          ) {
+            return [];
+          }
+          parsed.push(current);
+        }
+        return parsed;
+      }
+
+      function parseResult(json) {
+        const payload = JSON.parse(json);
+        if (
+          !payload ||
+          typeof payload.failed !== "boolean" ||
+          typeof payload.truncated !== "boolean" ||
+          typeof payload.stdout !== "string" ||
+          typeof payload.stderr !== "string" ||
+          (payload.exitCode !== null && !Number.isInteger(payload.exitCode)) ||
+          (payload.signal !== null && typeof payload.signal !== "string")
+        ) {
+          throw new Error("Choose a JSON result exported from the TLC tool.");
+        }
+        if (payload.truncated) {
+          return {
+            label: "Diagnostic failure",
+            message: "TLC output exceeded the response limit.",
+            trace: []
+          };
+        }
+        if (
+          !payload.failed &&
+          payload.exitCode === 0 &&
+          typeof payload.behavior === "string"
+        ) {
+          const content =
+            /^-+ MODULE (?:[^\n]*[/\\])?behavior_\d+_\d+ -+\n(?<body>STATE_[\s\S]+)\n=+\s*$/u.exec(
+              payload.behavior.replaceAll("\r\n", "\n")
+            );
+          const trace = content
+            ? parseStates(
+                content.groups.body.matchAll(
+                  /^STATE_(?<number>\d+) ==[ \t]*(?<values>[\s\S]*?)(?=^STATE_|$(?![\s\S]))/gmu
+                )
+              )
+            : [];
+          return trace.length
+            ? {
+                label: "Sampled behavior",
+                message: "One bounded TLC simulation.",
+                trace
+              }
+            : {
+                label: "Diagnostic failure",
+                message: "This export contains an unreadable behavior.",
+                trace: []
+              };
+        }
+        if (payload.failed && counterexampleExits.has(payload.exitCode)) {
+          const output = payload.stdout.replaceAll("\r\n", "\n");
+          const trace = parseStates(
+            output.matchAll(
+              /^@!@!@STARTMSG 2217:4 @!@!@\n(?<number>\d+): [^\n]*\n(?<values>[\s\S]*?)\n@!@!@ENDMSG 2217 @!@!@$/gmu
+            )
+          );
+          const loop = /^@!@!@STARTMSG 2122:4 @!@!@\n(?<target>\d+): /mu.exec(
+            output
+          );
+          if (
+            trace.length &&
+            (!loop ||
+              (Number(loop.groups.target) >= 1 &&
+                Number(loop.groups.target) <= trace.length))
+          ) {
+            const stuttering = /^@!@!@STARTMSG 2218:4 @!@!@$/mu.test(output);
+            const message = loop
+              ? `The counterexample loops back to state ${Number(loop.groups.target)}.`
+              : stuttering
+                ? "The last state repeats indefinitely."
+                : "TLC reported a violation with a state trace.";
+            return { label: "Counterexample", message, trace };
+          }
+          return {
+            label: "Violation without a readable trace",
+            message: "Export the TLC check result with -tool.",
+            trace: []
+          };
+        }
+        if (payload.failed || payload.exitCode !== 0) {
+          const message =
+            payload.exitCode === null
+              ? "TLC stopped before it returned a behavior."
+              : `TLC returned exit code ${payload.exitCode} without a behavior. See the original result for diagnostics.`;
+          return { label: "Diagnostic failure", message, trace: [] };
+        }
+        return {
+          label: "No behavior",
+          message: "The result contains no exported state trace.",
+          trace: []
+        };
+      }
+
+      function render(index) {
+        selected = index;
+        const current = trace[index];
+        const prior = trace[index - 1];
+        position.value = String(index + 1);
+        previous.disabled = index === 0;
+        next.disabled = index === trace.length - 1;
+        let changedCount = 0;
+        const rows = [...current].map(([name, value]) => {
+          const row = document.createElement("tr");
+          const heading = document.createElement("th");
+          heading.scope = "row";
+          heading.textContent = name;
+          row.append(heading);
+          if (prior && prior.get(name) !== value) {
+            row.className = "changed";
+            const change = document.createElement("small");
+            change.textContent = "Changed";
+            heading.append(change);
+            changedCount += 1;
+          }
+          for (const text of [prior?.get(name) ?? "—", value]) {
+            const code = document.createElement("code");
+            code.textContent = text;
+            row.insertCell().append(code);
+          }
+          return row;
+        });
+        variables.replaceChildren(...rows);
+        summary.textContent = prior
+          ? `State ${index + 1}. ${changedCount} of ${current.size} variables changed.`
+          : "State 1. Initial values.";
+      }
+
+      function reset() {
+        revision += 1;
+        trace = [];
+        variables.replaceChildren();
+        result.hidden = true;
+        states.hidden = true;
+        clear.disabled = true;
+        status.textContent = "";
+      }
+
+      clear.addEventListener("click", () => {
+        reset();
+        fileInput.focus();
+      });
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files.item(0);
+        fileInput.value = "";
+        if (!file) {
+          return;
+        }
+        reset();
+        const request = revision;
+        clear.disabled = false;
+        status.textContent = "Reading TLC result…";
+        try {
+          if (file.size > 40 * 1024 * 1024) {
+            throw new Error("Choose a TLC result of at most 40 MiB.");
+          }
+          const imported = parseResult(await file.text());
+          if (request !== revision) {
+            return;
+          }
+          trace = imported.trace;
+          kind.textContent = imported.label;
+          ending.textContent = imported.message;
+          ending.hidden = false;
+          result.hidden = false;
+          states.hidden = !trace.length;
+          status.textContent = "TLC result loaded.";
+          if (trace.length) {
+            position.max = String(trace.length);
+            total.textContent = `of ${trace.length}`;
+            render(0);
+          }
+        } catch (error) {
+          if (request === revision) {
+            status.textContent =
+              error instanceof SyntaxError
+                ? "Choose a valid TLC result JSON file."
+                : error.message;
+          }
+        }
+      });
+
+      previous.addEventListener("click", () => render(selected - 1));
+      next.addEventListener("click", () => render(selected + 1));
+      position.addEventListener("change", () => {
+        if (position.value && position.validity.valid) {
+          render(position.valueAsNumber - 1);
+        } else {
+          position.value = String(selected + 1);
+        }
+      });
+
+      function connectViewer() {
+        if (window.parent === window) {
+          return;
+        }
+        const share = document.getElementById("share");
+        let origin = null;
+        let sequence = 1;
+        let sharing = null;
+        function post(message) {
+          window.parent.postMessage(
+            { jsonrpc: "2.0", ...message },
+            origin === "null" ? "*" : (origin ?? "*")
+          );
+        }
+        window.addEventListener("message", (event) => {
+          const message = event.data;
+          if (
+            event.source !== window.parent ||
+            (origin !== null && event.origin !== origin) ||
+            message?.jsonrpc !== "2.0"
+          ) {
+            return;
+          }
+          if (
+            origin === null &&
+            message.id === 1 &&
+            message.result?.hostCapabilities
+          ) {
+            origin = event.origin;
+            share.hidden =
+              message.result.hostCapabilities.updateModelContext?.text == null;
+            post({ method: "ui/notifications/initialized" });
+          } else if (
+            origin !== null &&
+            message.method === "ui/resource-teardown"
+          ) {
+            share.hidden = true;
+            sharing = null;
+            post({ id: message.id, result: {} });
+          } else if (origin !== null && message.method === "ping") {
+            post({ id: message.id, result: {} });
+          } else if (sharing && message.id === sharing.id && !message.method) {
+            if (sharing.revision === revision) {
+              status.textContent = message.error
+                ? "The host could not share the selected state."
+                : "Selected state shared with this thread.";
+            }
+            sharing = null;
+            share.disabled = false;
+          }
+        });
+        share.addEventListener("click", () => {
+          if (share.hidden || sharing || !trace.length) {
+            return;
+          }
+          sharing = { id: ++sequence, revision };
+          share.disabled = true;
+          post({
+            id: sharing.id,
+            method: "ui/update-model-context",
+            params: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    kind: kind.textContent,
+                    state: selected + 1,
+                    variables: Object.fromEntries(trace[selected])
+                  })
+                }
+              ]
+            }
+          });
+        });
+        post({
+          id: 1,
+          method: "ui/initialize",
+          params: {
+            protocolVersion: "2026-01-26",
+            appInfo: { name: "TLC Behavior Viewer", version: "1.0.0" },
+            appCapabilities: {}
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

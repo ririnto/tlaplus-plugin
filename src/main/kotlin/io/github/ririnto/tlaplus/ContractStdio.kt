@@ -96,12 +96,14 @@ private class ContractTransport(private val transport: McpServerTransport) : Mcp
             ))
             result is ListToolsResult -> {
                 val tools = result.tools().map { tool ->
-                    mapOf(
-                        "name" to tool.name(),
-                        "description" to tool.description(),
-                        "inputSchema" to tool.inputSchema(),
-                        "execution" to mapOf("taskSupport" to "forbidden")
-                    )
+                    buildMap {
+                        put("name", tool.name())
+                        put("description", tool.description())
+                        put("inputSchema", tool.inputSchema())
+                        put("execution", mapOf("taskSupport" to "forbidden"))
+                        tool.title()?.let { put("title", it) }
+                        tool.meta()?.takeIf { it.isNotEmpty() }?.let { put("_meta", it) }
+                    }
                 }
                 JSONRPCResponse.result(message.id(), buildMap {
                     put("tools", tools)

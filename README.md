@@ -97,6 +97,8 @@ Pass an absolute `fileName`.
 TLC tools also accept an absolute `cfgFile`, plus `extraOpts` and `extraJavaOpts` as arrays of individual arguments.
 The `extraJavaOpts` field accepts native runtime options such as `-Xmx256m` and system properties such as `-Dkey=value`.
 Explore accepts a positive `behaviorLength` and defaults to 100.
+
+Use the [offline TLC Behavior Viewer](docs/behavior-viewer.md) to step through a saved explore result or TLC counterexample.
 Requests support cancellation and have a two-minute execution limit.
 Results include process status, diagnostics, and truncation information.
 
