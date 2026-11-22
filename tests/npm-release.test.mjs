@@ -185,6 +185,7 @@ try {
         cpSync(packs, artifacts, { recursive: true });
         const bin = path.join(workspace, "bin");
         mkdirSync(bin);
+        mkdirSync(path.join(workspace, "git-common"));
         for (const command of ["npm", "git", "gh"]) {
           writeFileSync(
             path.join(bin, command),
@@ -358,6 +359,27 @@ try {
           );
         }
         assert.deepEqual(calls("npm", "dist-tag"), []);
+      });
+
+      void test("blocks another promotion or finalization during an alias write", () => {
+        invoke("stage");
+        setRegistry(registryState());
+        const otherArtifacts = path.join(workspace, "other artifacts");
+        cpSync(artifacts, otherArtifacts, { recursive: true });
+        const promoted = invoke("promote", 0, {
+          OVERLAP_ARTIFACTS: otherArtifacts
+        });
+        assert.match(
+          promoted.stdout,
+          /Concurrent promote rejected before alias write/u
+        );
+        assert.match(
+          promoted.stdout,
+          /Concurrent release rejected before alias write/u
+        );
+        assert.equal(calls("npm", "dist-tag", "add").length, names.length * 2);
+        assert.deepEqual(calls("gh"), []);
+        invoke("release");
       });
     }
   );

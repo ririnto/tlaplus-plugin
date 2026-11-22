@@ -169,6 +169,16 @@ check_registry() {
   done <<<"$packages"
 }
 
+if [ "$mode" = promote ] || [ "$mode" = release ]; then
+  git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
+  if ! (cd "$git_common_dir" && mkdir npm-release.lock); then
+    fail "Cannot acquire the npm release lock. Check for another promotion or finalization."
+  fi
+  trap '(cd "$git_common_dir" && rmdir npm-release.lock)' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+fi
+
 case "$mode" in
 platforms)
   check_registry platforms current

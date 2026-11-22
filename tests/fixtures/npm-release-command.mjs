@@ -11,8 +11,7 @@ const { ARTIFACTS: artifacts, FIXTURE: fixture } = process.env;
 const registry = "https://registry.npmjs.org";
 assert.ok(artifacts !== undefined && fixture !== undefined);
 
-if (cmd === "git" && args[0] === "rev-parse") {
-  assert.deepEqual(args, ["rev-parse", "HEAD"]);
+if (cmd === "git" && args[0] === "rev-parse" && args[1] === "HEAD") {
   console.log(
     execFileSync("git", args, {
       env: { ...process.env, PATH: process.env.REAL_GIT_PATH },
@@ -27,7 +26,14 @@ if (cmd === "git" && args[0] === "rev-parse") {
   const manifest = releaseManifest(
     readFileSync(path.join(artifacts, "npm-release", "manifest.json"), "utf-8")
   );
-  if (cmd === "git") {
+  if (cmd === "git" && args[0] === "rev-parse") {
+    assert.deepEqual(args, [
+      "rev-parse",
+      "--path-format=absolute",
+      "--git-common-dir"
+    ]);
+    console.log(path.join(fixture, "git-common"));
+  } else if (cmd === "git") {
     const ref = `refs/tags/${manifest.gitTag}`;
     assert.deepEqual(args, [
       "ls-remote",
@@ -95,6 +101,30 @@ if (cmd === "git" && args[0] === "rev-parse") {
       );
       assert.ok(pkg, args[2]);
       assert.ok(["latest", manifest.toolsTag].includes(args[3]));
+      const otherArtifacts = process.env.OVERLAP_ARTIFACTS;
+      if (
+        otherArtifacts !== undefined &&
+        pkg.name === manifest.packages[0].name &&
+        args[3] === manifest.toolsTag
+      ) {
+        for (const mode of ["promote", "release"]) {
+          assert.throws(
+            () =>
+              execFileSync(
+                "bash",
+                [
+                  "scripts/npm-release.sh",
+                  mode,
+                  manifest.gitTag,
+                  otherArtifacts
+                ],
+                { encoding: "utf-8", stdio: "pipe" }
+              ),
+            { status: 1, stderr: /Cannot acquire the npm release lock/u }
+          );
+          console.log(`Concurrent ${mode} rejected before alias write`);
+        }
+      }
       object(state[pkg.name])[args[3]] = manifest.version;
       writeFileSync(stateFile, JSON.stringify(state));
     }

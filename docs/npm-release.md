@@ -48,8 +48,11 @@ Keep confirmed IDs and determine which submissions exist before arranging recove
 
 ## Move the consumer dist-tags and create the GitHub Release
 
-Keep one maintainer responsible for dist-tag changes while completing this release.
-npm updates each tag individually.
+Run every promotion and finalization from the same Git clone on the designated release host.
+Only the maintainer with release custody moves the consumer tags through the script.
+The lock covers cooperating script commands in that clone and its linked worktrees.
+Separate clones, other hosts, and direct npm dist-tag writes fall outside this procedure.
+npm updates each dist-tag individually without a compare-and-swap operation.
 
 ```sh
 bash scripts/npm-release.sh promote "$git_tag" "$artifacts"
@@ -60,6 +63,7 @@ bash scripts/npm-release.sh release "$git_tag" "$artifacts"
 It uses `npm dist-tag add <package>@<exact-version> <tag>` for the TLA+ Tools tag and `latest`, with the main package last.
 If either consumer tag points to a newer or unrecognized release, the script stops.
 After an interrupted promotion, check the registry and resume the same accepted release if the guards still pass.
+If a process was killed and left the lock behind, confirm it has exited before removing the empty `npm-release.lock` directory in the clone's Git common directory.
 
 `release` checks the tarball integrities and both consumer tags again before creating the GitHub Release with the original tarballs.
 It also verifies that the remote Git tag still points to the release commit.
