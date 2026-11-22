@@ -48,7 +48,7 @@ Keep confirmed IDs and determine which submissions exist before arranging recove
 
 ## Move the consumer dist-tags and create the GitHub Release
 
-Run every promotion and finalization from the same Git clone on the designated release host.
+Run every promotion and finalization from the same Git clone on the designated release host, using a platform in the package matrix.
 Only the maintainer with release custody moves the consumer tags through the script.
 The lock covers cooperating script commands in that clone and its linked worktrees.
 Separate clones, other hosts, and direct npm dist-tag writes fall outside this procedure.
@@ -65,6 +65,8 @@ If either consumer tag points to a newer or unrecognized release, the script sto
 After an interrupted promotion, check the registry and resume the same accepted release if the guards still pass.
 If a process was killed and left the lock behind, confirm it has exited before removing the empty `npm-release.lock` directory in the clone's Git common directory.
 
-`release` checks the tarball integrities and both consumer tags again before creating the GitHub Release with the original tarballs.
-It also verifies that the remote Git tag still points to the release commit.
-The new GitHub Release triggers the seven public registry smoke jobs.
+`release` checks the tarball integrities and both consumer tags, then installs the accepted version by its TLA+ Tools tag and starts the MCP server without Java on the maintainer's platform.
+The smoke test runs with a fresh temporary home and the Node.js bin directory on its path.
+If the smoke test fails, investigate the failure and rerun `release` for the same accepted release.
+After a successful smoke test, the script verifies the registry state again and checks that the remote Git tag still points to the release commit before creating the GitHub Release with the original tarballs.
+GitHub runs the same public registry smoke across all seven platforms after publishing the release.

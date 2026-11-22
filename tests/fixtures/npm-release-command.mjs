@@ -45,6 +45,12 @@ if (cmd === "git" && args[0] === "rev-parse" && args[1] === "HEAD") {
     console.log(`${process.env.MOVED_TAG ?? manifest.commit}\t${ref}`);
   } else if (cmd === "gh") {
     assert.deepEqual(args.slice(0, 2), ["release", "create"]);
+  } else if (cmd === "env") {
+    assert.equal(args[0], "-i");
+    assert.equal(args[4], "scripts/registry-smoke.mjs");
+    if (process.env.FAIL_SMOKE === "1") {
+      process.exitCode = 42;
+    }
   } else if (args[0] === "--version") {
     console.log(process.env.FIXTURE_NPM_VERSION ?? "11.19.1");
   } else if (args[0] === "stage") {

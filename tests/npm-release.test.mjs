@@ -15,6 +15,7 @@ import path from "node:path";
 import { before, beforeEach, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { nativePlatform } from "../src/native-platform.mjs";
 import {
   array,
   object,
@@ -186,7 +187,7 @@ try {
         const bin = path.join(workspace, "bin");
         mkdirSync(bin);
         mkdirSync(path.join(workspace, "git-common"));
-        for (const command of ["npm", "git", "gh"]) {
+        for (const command of ["npm", "git", "gh", "env"]) {
           writeFileSync(
             path.join(bin, command),
             '#!/bin/sh\nexec "$FIXTURE_NODE" "$FIXTURE_SHIM" "$0" "$@"\n',
@@ -303,7 +304,7 @@ try {
         assert.equal(calls("npm", "stage", "publish").length, 1);
       });
 
-      void test("requires approvals, exact integrity and both dist-tags before creating the GitHub Release", () => {
+      void test("requires approvals, exact integrity, both dist-tags, and a consumer smoke before creating the GitHub Release", () => {
         invoke("stage");
         setRegistry(registryState(names.slice(0, -2)));
         invoke("platforms", 1);
@@ -318,6 +319,7 @@ try {
         assert.deepEqual(calls("npm", "dist-tag"), []);
         invoke("release", 1);
         assert.deepEqual(calls("gh"), []);
+        assert.deepEqual(calls("env"), []);
         invoke("promote");
         assert.deepEqual(
           calls("npm", "dist-tag", "add").map((call) => call.slice(3, 5)),
@@ -326,9 +328,32 @@ try {
             [`${name}@${version}`, "latest"]
           ])
         );
+        invoke("release", 42, { FAIL_SMOKE: "1" });
+        const smoke = [
+          process.execPath,
+          "scripts/registry-smoke.mjs",
+          version,
+          tools,
+          nativePlatform(),
+          registry
+        ];
+        const smokeCalls = () =>
+          calls("env").map((call) => {
+            const [, flag, home, smokePath] = call;
+            assert.equal(flag, "-i");
+            assert.ok(typeof home === "string" && home.startsWith("HOME="));
+            assert.notEqual(home, `HOME=${baseEnv.HOME}`);
+            assert.ok(!existsSync(home.slice("HOME=".length)));
+            assert.equal(smokePath, `PATH=${path.dirname(process.execPath)}`);
+            return call.slice(4);
+          });
+        assert.deepEqual(smokeCalls(), [smoke]);
+        assert.deepEqual(calls("gh"), []);
         invoke("release", 1, { MOVED_TAG: "mismatch" });
+        assert.deepEqual(smokeCalls(), [smoke, smoke]);
         assert.deepEqual(calls("gh"), []);
         invoke("release");
+        assert.deepEqual(smokeCalls(), [smoke, smoke, smoke]);
         assert.deepEqual(calls("gh", "release", "create"), [
           [
             "gh",

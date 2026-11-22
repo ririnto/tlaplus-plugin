@@ -197,6 +197,15 @@ promote)
   ;;
 release)
   check_registry all exact
+  platform=$(node --input-type=module -e 'import { nativePlatform } from "./src/native-platform.mjs"; console.log(nativePlatform())')
+  (
+    smoke_home=$(mktemp -d)
+    trap 'rm -rf -- "$smoke_home"' EXIT
+    node_bin=$(node -p 'process.execPath')
+    env -i HOME="$smoke_home" PATH="${node_bin%/*}" \
+      "$node_bin" scripts/registry-smoke.mjs "$version" "$tools_tag" "$platform" "$registry"
+  )
+  check_registry all exact
   repo=ririnto/tlaplus-plugin
   ref="refs/tags/$git_tag"
   remote_refs=$(git ls-remote --exit-code "https://github.com/$repo.git" "$ref" "$ref^{}")
