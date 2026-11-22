@@ -117,7 +117,7 @@ npm test
 ```
 
 Dependencies install with pnpm from the version catalog in `pnpm-workspace.yaml`.
-Packing, the consumer test, and registry publishing stay on the npm command because trusted publishing authenticates through the npm CLI.
+Packing, the consumer test, and release staging use the npm CLI.
 
 `npm pack` builds the main package.
 `npm pack ./npm` builds the platform package from the `npm/` directory that the build creates.
@@ -131,14 +131,13 @@ The tarball includes upstream licenses and works offline after installation.
 
 `npm pack` runs the Kotlin contract tests before building the tarball.
 The pull request and release workflows share one build, test, and upload procedure.
-A release stamps the package version before the build and publishes the resulting tested tarballs through trusted publishing.
+A release stamps the package version before the build and stages the resulting tested tarballs through npm trusted publishing.
 
 Version the plugin by UTC build date and a two-digit build number, for example `2026.11.20.01`.
-Publish a release by pushing a Git tag with the plugin version, for example `2026.11.20.01`.
+Start a release by pushing a Git tag with the plugin version, for example `2026.11.20.01`.
 The publish workflow prepends the TLA+ tools version and removes leading zeroes from numeric date and build fields to produce the npm version, for example `1.7.4-2026.11.20.1`.
 The Git tag and GitHub release retain the original CalVer spelling.
 The MCP server reports the package version in its initialize response.
-The workflow verifies that all eight npm packages have the expected version before publishing them on the same moving dist-tag, for example `tlaplus-1.7.4`.
-It publishes the seven native packages first and the main package last, then creates a GitHub release with the eight published tarballs.
+Follow the [npm release procedure](docs/npm-release.md) to approve the seven native packages, approve the main package, move the consumer dist-tags, and create the GitHub Release.
 
 [AgentSkills](https://github.com/tlaplus/AgentSkills) · [VS Code extension](https://github.com/tlaplus/vscode-tlaplus) · [TLA+ tools](https://github.com/tlaplus/tlaplus) · [Spring AI MCP Server Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html)

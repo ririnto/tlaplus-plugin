@@ -3,29 +3,22 @@ on:
   push:
     tags:
       - "20*"
+  release:
+    types: [published]
 
 permissions:
-  id-token: write
-  contents: write
+  contents: read
 
 jobs:
   package:
     name: Build and check release packages
-    permissions:
-      contents: read
+    if: github.event_name == 'push'
     uses: ./.github/workflows/package.yaml
     with:
       release_tag: ${{ github.ref_name }}
   preflight:
     name: Verify release tarballs
     needs: package
-    permissions:
-      contents: read
-    outputs:
-      version: ${{ steps.release.outputs.version }}
-      dist_tag: ${{ steps.release.outputs.dist_tag }}
-      commit: ${{ steps.release.outputs.commit }}
-      tarballs: ${{ steps.release.outputs.tarballs }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -37,119 +30,91 @@ jobs:
         with:
           pattern: npm-package-*
           path: packages
-      - name: Verify one exact-version tarball per npm package
-        id: release
+      - name: Verify the exact tarballs and record release metadata
         shell: bash
-        env:
-          PACKAGE_MATRIX: ${{ needs.package.outputs.matrix }}
         run: |-
-          version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
-          dist_tag=$(node --input-type=module -e 'import { tlaDistTag } from "./scripts/tla-version.mjs"; console.log(tlaDistTag)')
-          commit=$(git rev-parse HEAD)
-          platforms=$(jq -r '.include | map(.platform) | sort[]' <<< "$PACKAGE_MATRIX")
-          tarballs=()
-          check_tarball() {
-            local candidates=("$1"[0-9]*.tgz)
-            local tarball="$1$version.tgz"
-            if [ "${#candidates[@]}" -ne 1 ] || [ "${candidates[0]}" != "$tarball" ] || [ ! -f "$tarball" ]; then
-              echo "Expected exactly one tarball at $tarball" >&2
-              exit 1
-            fi
-            local packed_version
-            packed_version=$(tar -xOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version')
-            if [ "$packed_version" != "$version" ]; then
-              echo "Expected package version $version in $tarball, got $packed_version" >&2
-              exit 1
-            fi
-            tarballs+=("$tarball")
-          }
-          check_tarball packages/npm-package-linux-x64-gnu/tlaplus-mcp-tlaplus-mcp-
-          while IFS= read -r platform; do
-            check_tarball "packages/npm-package-$platform/tlaplus-mcp-tlaplus-mcp-$platform-"
-          done <<< "$platforms"
-          {
-            echo "version=$version"
-            echo "dist_tag=$dist_tag"
-            echo "commit=$commit"
-            echo 'tarballs<<EOF'
-            printf '%s\n' "${tarballs[@]}"
-            echo EOF
-          } >> "$GITHUB_OUTPUT"
-  publish-platform:
-    name: Publish platform package (${{ matrix.platform }})
-    needs:
-      - package
-      - preflight
+          mkdir -p packages/npm-release
+          bash scripts/npm-release.sh prepare "$GITHUB_REF_NAME" packages > packages/npm-release/manifest.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-release
+          path: packages/npm-release/manifest.json
+          if-no-files-found: error
+  stage:
+    name: Submit the verified npm tarballs for approval
+    needs: preflight
     permissions:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJSON(needs.package.outputs.matrix) }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 24.22.3
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - uses: actions/download-artifact@v8
-        with:
-          name: npm-package-${{ matrix.platform }}
-          path: packages
-      - name: Publish platform package
-        shell: bash
-        env:
-          PLATFORM: ${{ matrix.platform }}
-          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
-          RELEASE_DIST_TAG: ${{ needs.preflight.outputs.dist_tag }}
-        run: |-
-          npm publish "./packages/tlaplus-mcp-tlaplus-mcp-$PLATFORM-$RELEASE_VERSION.tgz" --access public --tag "$RELEASE_DIST_TAG"
-  publish:
-    name: Publish main package and create the GitHub release
-    needs:
-      - preflight
-      - publish-platform
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-      - name: Download every packed artifact
-        uses: actions/download-artifact@v8
         with:
           pattern: npm-package-*
           path: packages
-      - name: Publish main package
+      - uses: actions/download-artifact@v8
+        with:
+          name: npm-release
+          path: packages/npm-release
+      - name: Stage the seven platform packages and the main package
         shell: bash
-        env:
-          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
-          RELEASE_DIST_TAG: ${{ needs.preflight.outputs.dist_tag }}
-        run: |-
-          npm publish "./packages/npm-package-linux-x64-gnu/tlaplus-mcp-tlaplus-mcp-$RELEASE_VERSION.tgz" --access public --tag "$RELEASE_DIST_TAG"
-      - name: Create the GitHub release carrying the published npm tarballs
+        run: bash scripts/npm-release.sh stage "$GITHUB_REF_NAME" packages
+      - name: Preserve confirmed submissions and any unconfirmed attempt
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: npm-stage
+          path: packages/npm-stage/submissions.ndjson
+
+  registry-metadata:
+    name: Read the published release metadata
+    if: github.event_name == 'release' && startsWith(github.ref_name, '20')
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.release.outputs.matrix }}
+      version: ${{ steps.release.outputs.version }}
+      dist_tag: ${{ steps.release.outputs.dist_tag }}
+      commit: ${{ steps.release.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - id: release
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TARBALLS: ${{ needs.preflight.outputs.tarballs }}
         run: |-
-          mapfile -t tarballs <<< "$RELEASE_TARBALLS"
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes "${tarballs[@]}"
+          matrix=$(jq -ce . .github/package-matrix.json)
+          version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
+          dist_tag=$(node --input-type=module -e 'import { tlaDistTag } from "./scripts/tla-version.mjs"; console.log(tlaDistTag)')
+          commit=$(git rev-parse HEAD)
+          {
+            echo "matrix=$matrix"
+            echo "version=$version"
+            echo "dist_tag=$dist_tag"
+            echo "commit=$commit"
+          } >> "$GITHUB_OUTPUT"
   registry-smoke:
     name: Public registry smoke (${{ matrix.platform }})
-    needs:
-      - package
-      - preflight
-      - publish
+    if: github.event_name == 'release'
+    needs: registry-metadata
     permissions: {}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 8
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.package.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.registry-metadata.outputs.matrix) }}
     env:
-      RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
-      RELEASE_DIST_TAG: ${{ needs.preflight.outputs.dist_tag }}
-      RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
+      RELEASE_VERSION: ${{ needs.registry-metadata.outputs.version }}
+      RELEASE_DIST_TAG: ${{ needs.registry-metadata.outputs.dist_tag }}
+      RELEASE_COMMIT: ${{ needs.registry-metadata.outputs.commit }}
       EXPECTED_PLATFORM: ${{ matrix.platform }}
     steps:
       - name: Fetch the smoke script at the release commit

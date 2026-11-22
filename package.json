@@ -23,6 +23,7 @@
     "check": "run-p check:*",
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:test": "npm run test:consumer --",
+    "check:test-release": "node --test tests/npm-release.test.mjs",
     "check:typescript": "tsc",
     "check:ultracite": "ultracite check",
     "fix": "run-p fix:*",
