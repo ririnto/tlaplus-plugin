@@ -71,8 +71,6 @@ Only run trusted specifications and worker options.
 
 ### Install the editor plugin from a checkout
 
-Use a Git checkout for the editor manifests and modeling skills.
-Follow the build prerequisites below, then run `pnpm install` and `npm run build` in the checkout to prepare the skills.
 The editor manifests use `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release when no local version is installed.
 
 From the checkout root, run the command for your editor.
@@ -83,7 +81,7 @@ codex plugin marketplace add .
 codex plugin add tlaplus-plugin@tlaplus-plugin
 ```
 
-For Cursor, copy the `.cursor-plugin/` and generated `skills/` directories into `~/.cursor/plugins/local/tlaplus-plugin/` and reload the window.
+For Cursor, copy the `.cursor-plugin/` directory into `~/.cursor/plugins/local/tlaplus-plugin/` and reload the window.
 
 ## Tools and references
 
@@ -101,7 +99,7 @@ Explore accepts a positive `behaviorLength` and defaults to 100.
 Requests support cancellation and have a two-minute execution limit.
 Results include process status, diagnostics, and truncation information.
 
-The editor plugin skills cover adding a variable, splitting an action, and deriving a specification from source code. MCP clients can list and read the bundled Markdown articles at `tlaplus://knowledge/<filename>`, for example `tlaplus://knowledge/tlc-config-files.md`.
+MCP clients can list and read the bundled Markdown articles at `tlaplus://knowledge/<filename>`, for example `tlaplus://knowledge/tlc-config-files.md`.
 
 ## Build a release
 
