@@ -6,7 +6,7 @@ The npm package includes a native Spring AI stdio server with the official TLA+ 
 ## Use the package
 
 Install Node.js 24 or later.
-Install `@tlaplus-mcp/tlaplus-mcp` using the dist-tag for your TLA+ tools version, such as `tlaplus-1.7.4`, or specify an exact npm version.
+Install `@tlaplus-mcp/tlaplus-mcp` to get the latest release from npm.
 The package pulls the native server binary for the current platform through `optionalDependencies`.
 
 Supported platforms
@@ -25,15 +25,16 @@ Windows ARM64 (`win32-arm64`) is unsupported because Liberica Native Image Kit f
 Add it to the release matrices only after a native ARM64 build passes the same Java-free consumer tests as the other platforms.
 
 ```sh
-npm install @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4
+npm install @tlaplus-mcp/tlaplus-mcp
 npm exec -- tlaplus-mcp
 ```
 
-`npx -y @tlaplus-mcp/tlaplus-mcp` resolves the latest release and starts the server without a local install.
+`npx -y @tlaplus-mcp/tlaplus-mcp` resolves the latest release and starts the server when the package is absent from the current project.
+`npx` can use the version already installed in the current project.
 
 ### Register the MCP server
 
-Each configuration below uses `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release at startup.
+Each configuration below uses `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release when no local version is installed.
 
 Claude Code:
 
@@ -62,7 +63,7 @@ Cursor, in `~/.cursor/mcp.json`:
 }
 ```
 
-For a general MCP client, use `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release.
+For a general MCP client, use `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release when no local version is installed.
 In an npm project you can instead set `command` to `node` with `node_modules/@tlaplus-mcp/tlaplus-mcp/dist/server.mjs`, or run the platform binary directly from `node_modules/@tlaplus-mcp/tlaplus-mcp-<platform>/tlaplus-server`.
 The executable includes the TLA+ standard modules and the knowledge base.
 The server writes JSON-RPC to stdout and its own diagnostics to stderr.
@@ -72,7 +73,7 @@ Only run trusted specifications and worker options.
 
 Use a Git checkout for the editor manifests and modeling skills.
 Follow the build prerequisites below, then run `pnpm install` and `npm run build` in the checkout to prepare the skills.
-The editor manifests launch `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release.
+The editor manifests use `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release when no local version is installed.
 
 From the checkout root, run the command for your editor.
 
