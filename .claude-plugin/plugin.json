@@ -6,7 +6,6 @@
     "name": "ririnto"
   },
   "license": "MIT",
-  "skills": "./skills/",
   "mcpServers": {
     "tlaplus": {
       "type": "stdio",
