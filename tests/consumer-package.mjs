@@ -12,10 +12,10 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { prepareTlaLibrary, root, runMaven } from "../scripts/jvm.mjs";
+import { readManifest, readPackageManifest } from "../scripts/manifest.mjs";
+import { tlaDistTag } from "../scripts/tla-version.mjs";
 import { linuxLibc, nativePlatform } from "../src/native-platform.mjs";
-import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
-import { readManifest, readPackageManifest } from "./manifest.mjs";
-import { tlaDistTag } from "./tla-version.mjs";
 
 const npm = process.env.npm_execpath;
 if (npm === undefined || npm.length === 0) {
