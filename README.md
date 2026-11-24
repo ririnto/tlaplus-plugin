@@ -29,16 +29,16 @@ npm install @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4
 npm exec -- tlaplus-mcp
 ```
 
-`npx -y @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4` starts the server without a local install.
+`npx -y @tlaplus-mcp/tlaplus-mcp` resolves the latest release and starts the server without a local install.
 
 ### Register the MCP server
 
-Every command below runs the npm release, so the host fetches the package from the registry at startup.
+Each configuration below uses `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release at startup.
 
 Claude Code:
 
 ```sh
-claude mcp add tlaplus -- npx -y @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4
+claude mcp add tlaplus -- npx -y @tlaplus-mcp/tlaplus-mcp
 ```
 
 Codex, in `~/.codex/config.toml`:
@@ -46,7 +46,7 @@ Codex, in `~/.codex/config.toml`:
 ```toml
 [mcp_servers.tlaplus]
 command = "npx"
-args = ["-y", "@tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4"]
+args = ["-y", "@tlaplus-mcp/tlaplus-mcp"]
 ```
 
 Cursor, in `~/.cursor/mcp.json`:
@@ -56,13 +56,13 @@ Cursor, in `~/.cursor/mcp.json`:
   "mcpServers": {
     "tlaplus": {
       "command": "npx",
-      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4"]
+      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp"]
     }
   }
 }
 ```
 
-For a general MCP client, set `command` to `npx` with the arguments `-y @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4`.
+For a general MCP client, use `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release.
 In an npm project you can instead set `command` to `node` with `node_modules/@tlaplus-mcp/tlaplus-mcp/dist/server.mjs`, or run the platform binary directly from `node_modules/@tlaplus-mcp/tlaplus-mcp-<platform>/tlaplus-server`.
 The executable includes the TLA+ standard modules and the knowledge base.
 The server writes JSON-RPC to stdout and its own diagnostics to stderr.
@@ -72,7 +72,7 @@ Only run trusted specifications and worker options.
 
 Use a Git checkout for the editor manifests and modeling skills.
 Follow the build prerequisites below, then run `pnpm install` and `npm run build` in the checkout to prepare the skills.
-The editor manifests launch the npm MCP package.
+The editor manifests launch `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release.
 
 From the checkout root, run the command for your editor.
 
