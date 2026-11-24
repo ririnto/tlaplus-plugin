@@ -24,6 +24,8 @@ private val state = Regex("(?m)^STATE_(\\d+) == ")
 private val value = Regex("(?m)^x = (\\d+)$")
 
 class InstalledPackageIT : FunSpec({
+    val models = Path.of(checkNotNull(javaClass.getResource("/models")).toURI())
+
     test("the installed npm command initializes and advertises the original tool schemas and knowledge") {
         withClient(Launch.NPM) { client, _ ->
             val tools = client.call("tools/list").path("tools")
@@ -51,7 +53,7 @@ class InstalledPackageIT : FunSpec({
             val uri = "tlaplus://knowledge/tlc-config-files.md"
             val article = client.call("resources/read", mapOf("uri" to uri)).path("contents").get(0)
             article.path("text").asString().isNotBlank() shouldBe true
-            val parse = client.tool(SANY, mapOf("fileName" to Path("examples/Counter.tla").absolutePathString()))
+            val parse = client.tool(SANY, mapOf("fileName" to models.resolve("Counter.tla").absolutePathString()))
             ("Semantic processing of module Counter" in success(parse).path("stdout").asString()) shouldBe true
         }
     }
@@ -67,8 +69,8 @@ class InstalledPackageIT : FunSpec({
     test("all four tools execute through stdio with their original success and error payloads") {
         withClient { client, directory ->
             val moduleDirectory = Files.createDirectory(directory.resolve("model with spaces"))
-            val counter = Files.copy(Path("examples/Counter.tla"), moduleDirectory.resolve("Counter.tla"))
-            val config = Files.copy(Path("examples/Counter.cfg"), moduleDirectory.resolve("Counter.cfg"))
+            val counter = Files.copy(models.resolve("Counter.tla"), moduleDirectory.resolve("Counter.tla"))
+            val config = Files.copy(models.resolve("Counter.cfg"), moduleDirectory.resolve("Counter.cfg"))
             val options = mapOf("fileName" to counter.absolutePathString(), "cfgFile" to config.absolutePathString())
             val parse = client.startTool(SANY, options + ("extraJavaOpts" to listOf("-invalid")))
             val check = client.startTool(CHECK, options + ("extraJavaOpts" to listOf("-Xmx256m")))
@@ -83,7 +85,7 @@ class InstalledPackageIT : FunSpec({
             callbackThreads.sortedBy { it.first } shouldBe listOf(SANY, CHECK, SMOKE, EXPLORE).sorted().map { it to "true" }
             println("Native MCP callbacks ran on virtual threads: ${callbackThreads.map { it.first }.sorted().joinToString()}")
 
-            val broken = client.tool(SANY, mapOf("fileName" to Path("examples/Broken.tla").absolutePathString()))
+            val broken = client.tool(SANY, mapOf("fileName" to models.resolve("Broken.tla").absolutePathString()))
             val sanyFailure = execution(broken, failed = true)
             sanyFailure.path("stdout").asString().contains("Parse Error") shouldBe true
             execution(client.tool(SANY, mapOf("fileName" to counter.root.toString())), failed = true)
@@ -143,8 +145,8 @@ class InstalledPackageIT : FunSpec({
             failed.has("behavior") shouldBe false
 
             val probe = mapOf(
-                "fileName" to Path("tests/fixtures/DepthProbe.tla").absolutePathString(),
-                "cfgFile" to Path("tests/fixtures/DepthProbe.cfg").absolutePathString()
+                "fileName" to models.resolve("DepthProbe.tla").absolutePathString(),
+                "cfgFile" to models.resolve("DepthProbe.cfg").absolutePathString()
             )
             val transitions = success(client.tool(SMOKE, probe)).path("stdout").asString()
             depth.findAll(transitions).map { it.groupValues[1].toInt() }.toList() shouldBe (1..100).toList()
@@ -186,8 +188,8 @@ class InstalledPackageIT : FunSpec({
     test("cancelling in-flight TLC cleans up its worker and keeps the connection usable") {
         withClient { client, _ ->
             val probe = mapOf(
-                "fileName" to Path("tests/fixtures/DepthProbe.tla").absolutePathString(),
-                "cfgFile" to Path("tests/fixtures/DepthProbe.cfg").absolutePathString(),
+                "fileName" to models.resolve("DepthProbe.tla").absolutePathString(),
+                "cfgFile" to models.resolve("DepthProbe.cfg").absolutePathString(),
                 "behaviorLength" to 1_000_000
             )
             val id = client.startTool(EXPLORE, probe)
@@ -206,8 +208,8 @@ class InstalledPackageIT : FunSpec({
     test("closing stdin terminates active TLC and removes its files") {
         withClient { client, _ ->
             val probe = mapOf(
-                "fileName" to Path("tests/fixtures/DepthProbe.tla").absolutePathString(),
-                "cfgFile" to Path("tests/fixtures/DepthProbe.cfg").absolutePathString(),
+                "fileName" to models.resolve("DepthProbe.tla").absolutePathString(),
+                "cfgFile" to models.resolve("DepthProbe.cfg").absolutePathString(),
                 "behaviorLength" to 1_000_000
             )
             client.startTool(EXPLORE, probe)
