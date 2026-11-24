@@ -31,6 +31,7 @@
     "fix:ultracite": "ultracite fix",
     "prepack": "npm run build",
     "prepare": "husky",
+    "test:viewer": "node --test tests/behavior-viewer.test.mjs",
     "test": "npm run check:typescript && npm run test:consumer --",
     "test:consumer": "node scripts/test-consumer.mjs"
   },
@@ -45,6 +46,7 @@
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
+    "playwright": "catalog:",
     "typescript": "catalog:",
     "ultracite": "catalog:"
   },

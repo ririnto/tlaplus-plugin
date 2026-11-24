@@ -197,20 +197,22 @@
         const parsed = [];
         for (const block of blocks) {
           const { number = "1", values } = block.groups;
-          const lines = values.trim().split("\n");
+          const assignments = values.trim().split(/\n(?![ \t])/u);
           const current = new Map();
-          for (const line of lines) {
-            const assignment =
-              /^(?:\/\\ )?(?<name>[a-z_0-9]+) = (?<value>.+)$/iu.exec(line);
-            if (!assignment || (lines.length > 1 && !line.startsWith("/\\ "))) {
+          for (const assignment of assignments) {
+            const fields =
+              /^(?<conjunction>\/\\ )?(?<name>[a-z_0-9]+) = (?<value>[^\n].*)$/isu.exec(
+                assignment
+              )?.groups;
+            if (!fields || (assignments.length > 1 && !fields.conjunction)) {
               return [];
             }
-            current.set(assignment.groups.name, assignment.groups.value);
+            current.set(fields.name, fields.value);
           }
           const initial = parsed[0];
           if (
             Number(number) !== parsed.length + 1 ||
-            current.size !== lines.length ||
+            current.size !== assignments.length ||
             (initial &&
               (current.size !== initial.size ||
                 [...initial.keys()].some((name) => !current.has(name))))

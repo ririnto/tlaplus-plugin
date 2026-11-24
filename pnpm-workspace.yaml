@@ -9,6 +9,7 @@ catalog:
   oxfmt: ^0.78.0
   oxlint: ^1.93.0
   oxlint-tsgolint: ^7.0.2007
+  playwright: ^1.65.1
   typescript: ^7.0.2
   ultracite: ^8.2.0
 
