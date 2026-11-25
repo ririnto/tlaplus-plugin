@@ -14,3 +14,6 @@ catalog:
 
 allowBuilds:
   esbuild: true
+
+overrides:
+  micromark-extension-math>katex: ^0.18.2
