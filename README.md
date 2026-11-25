@@ -6,7 +6,7 @@ The npm package includes a native Spring AI stdio server with the official TLA+ 
 ## Use the package
 
 Install Node.js 24 or later.
-Install `@tlaplus-mcp/tlaplus-mcp` using the dist-tag for your TLA+ tools version, such as `tlaplus-1.7.4`, or specify an exact npm version.
+Install `@tlaplus-mcp/tlaplus-mcp` to get the latest release from npm.
 The package pulls the native server binary for the current platform through `optionalDependencies`.
 
 Supported platforms
@@ -25,20 +25,21 @@ Windows ARM64 (`win32-arm64`) is unsupported because Liberica Native Image Kit f
 Add it to the release matrices only after a native ARM64 build passes the same Java-free consumer tests as the other platforms.
 
 ```sh
-npm install @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4
+npm install @tlaplus-mcp/tlaplus-mcp
 npm exec -- tlaplus-mcp
 ```
 
-`npx -y @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4` starts the server without a local install.
+`npx -y @tlaplus-mcp/tlaplus-mcp` resolves the latest release and starts the server when the package is absent from the current project.
+`npx` can use the version already installed in the current project.
 
 ### Register the MCP server
 
-Every command below runs the npm release, so the host fetches the package from the registry at startup.
+Each configuration below uses `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release when no local version is installed.
 
 Claude Code:
 
 ```sh
-claude mcp add tlaplus -- npx -y @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4
+claude mcp add tlaplus -- npx -y @tlaplus-mcp/tlaplus-mcp
 ```
 
 Codex, in `~/.codex/config.toml`:
@@ -46,7 +47,7 @@ Codex, in `~/.codex/config.toml`:
 ```toml
 [mcp_servers.tlaplus]
 command = "npx"
-args = ["-y", "@tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4"]
+args = ["-y", "@tlaplus-mcp/tlaplus-mcp"]
 ```
 
 Cursor, in `~/.cursor/mcp.json`:
@@ -56,13 +57,13 @@ Cursor, in `~/.cursor/mcp.json`:
   "mcpServers": {
     "tlaplus": {
       "command": "npx",
-      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4"]
+      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp"]
     }
   }
 }
 ```
 
-For a general MCP client, set `command` to `npx` with the arguments `-y @tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4`.
+For a general MCP client, use `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release when no local version is installed.
 In an npm project you can instead set `command` to `node` with `node_modules/@tlaplus-mcp/tlaplus-mcp/dist/server.mjs`, or run the platform binary directly from `node_modules/@tlaplus-mcp/tlaplus-mcp-<platform>/tlaplus-server`.
 The executable includes the TLA+ standard modules and the knowledge base.
 The server writes JSON-RPC to stdout and its own diagnostics to stderr.
@@ -70,9 +71,7 @@ Only run trusted specifications and worker options.
 
 ### Install the editor plugin from a checkout
 
-Use a Git checkout for the editor manifests and modeling skills.
-Follow the build prerequisites below, then run `pnpm install` and `npm run build` in the checkout to prepare the skills.
-The editor manifests launch the npm MCP package.
+The editor manifests use `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release when no local version is installed.
 
 From the checkout root, run the command for your editor.
 
@@ -82,7 +81,7 @@ codex plugin marketplace add .
 codex plugin add tlaplus-plugin@tlaplus-plugin
 ```
 
-For Cursor, copy the `.cursor-plugin/` and generated `skills/` directories into `~/.cursor/plugins/local/tlaplus-plugin/` and reload the window.
+For Cursor, copy the `.cursor-plugin/` directory into `~/.cursor/plugins/local/tlaplus-plugin/` and reload the window.
 
 ## Tools and references
 
@@ -102,7 +101,7 @@ Use the [offline TLC Behavior Viewer](docs/behavior-viewer.md) to step through a
 Requests support cancellation and have a two-minute execution limit.
 Results include process status, diagnostics, and truncation information.
 
-The editor plugin skills cover adding a variable, splitting an action, and deriving a specification from source code. MCP clients can list and read the bundled Markdown articles at `tlaplus://knowledge/<filename>`, for example `tlaplus://knowledge/tlc-config-files.md`.
+MCP clients can list and read the bundled Markdown articles at `tlaplus://knowledge/<filename>`, for example `tlaplus://knowledge/tlc-config-files.md`.
 
 ## Build a release
 

@@ -6,13 +6,12 @@
     "name": "ririnto"
   },
   "license": "MIT",
-  "skills": "./skills/",
   "displayName": "TLA+",
   "mcpServers": {
     "tlaplus": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp@tlaplus-1.7.4"]
+      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp"]
     }
   }
 }

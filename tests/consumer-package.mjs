@@ -12,10 +12,9 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { prepareTlaLibrary, root, runMaven } from "../scripts/jvm.mjs";
+import { readManifest, readPackageManifest } from "../scripts/manifest.mjs";
 import { linuxLibc, nativePlatform } from "../src/native-platform.mjs";
-import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
-import { readManifest, readPackageManifest } from "./manifest.mjs";
-import { tlaDistTag } from "./tla-version.mjs";
 
 const npm = process.env.npm_execpath;
 if (npm === undefined || npm.length === 0) {
@@ -42,10 +41,10 @@ await Promise.all(
       `Expected an MCP command and arguments in ${file}`
     );
     assert.equal(server.command, "npx", file);
-    assert.deepEqual(server.args, ["-y", `${packageName}@${tlaDistTag}`], file);
+    assert.deepEqual(server.args, ["-y", packageName], file);
   })
 );
-console.log(`Editor MCP manifests install with npm dist-tag ${tlaDistTag}`);
+console.log("Editor MCP manifests launch the untagged npm package");
 
 const directory = await mkdtemp(path.join(tmpdir(), "tlaplus-consumer-"));
 const consumer = path.join(directory, "consumer project");
