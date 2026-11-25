@@ -1,6 +1,15 @@
 import { globSync, readFileSync } from "node:fs";
 
-import { isMap, isScalar, isSeq, LineCounter, parseDocument } from "yaml";
+import {
+  isAlias,
+  isMap,
+  isScalar,
+  isSeq,
+  LineCounter,
+  parseDocument,
+  visit
+} from "yaml";
+import type { YAMLMap, Alias, Node } from "yaml";
 
 interface ApprovedAction {
   readonly commit: string;
@@ -18,7 +27,7 @@ const approvedActions = new Map(
         clean: "true",
         "fetch-depth": "1",
         "fetch-tags": "false",
-        filter: null,
+        filter: "",
         "github-server-url": { contextual: null },
         lfs: "false",
         path: null,
@@ -63,7 +72,7 @@ const approvedActions = new Map(
         "mirror-token": null,
         "node-version": null,
         "node-version-file": null,
-        "package-manager-cache": { contextual: "true" },
+        "package-manager-cache": "true",
         "registry-url": null,
         scope: null,
         token: {
@@ -119,55 +128,136 @@ const approvedActions = new Map(
   })
 );
 
-for (const file of globSync(".github/workflows/*.{yaml,yml}").toSorted()) {
+const checkWorkflow = (file: string): void => {
   const lineCounter = new LineCounter();
   const workflow = parseDocument(readFileSync(file, "utf-8"), { lineCounter });
-  for (const error of workflow.errors) {
-    process.stderr.write(`${file}: ${error.message}\n`);
+  if (workflow.errors.length > 0) {
+    for (const error of workflow.errors) {
+      process.stderr.write(`${file}: ${error.message}\n`);
+    }
     process.exitCode = 1;
-  }
-  const jobs = workflow.get("jobs", true);
-  if (workflow.errors.length > 0 || !isMap(jobs)) {
-    continue;
+    return;
   }
 
-  for (const step of jobs.items.flatMap(({ value }) => {
-    const steps = isMap(value) && value.get("steps", true);
-    return isSeq(steps) ? steps.items : [];
-  })) {
-    const uses = isMap(step) && step.get("uses");
-    const inputs = isMap(step) && step.get("with", true);
-    if (typeof uses !== "string" || !isMap(inputs)) {
-      continue;
-    }
-    const action = approvedActions.get(uses);
-    if (!action) {
-      continue;
-    }
-
-    for (const { key, value } of inputs.items) {
-      if (
-        !(isScalar(key) && typeof key.value === "string" && isScalar(value))
-      ) {
-        continue;
-      }
-
-      const literal: unknown = value.value;
-      const defaultValue = action.inputs[key.value];
-      if (
-        typeof defaultValue === "string" &&
-        (typeof literal === "string" ||
-          typeof literal === "boolean" ||
-          (typeof literal === "number" && Number.isSafeInteger(literal))) &&
-        !String(literal).includes(`\${{`) &&
-        String(literal) === defaultValue
-      ) {
-        const { line, col } = lineCounter.linePos(key.range?.[0] ?? 0);
+  const anchors = new Map<string, Node>();
+  const aliases = new WeakMap<Alias, Node>();
+  const shared = new Set<Node>();
+  visit(workflow, {
+    Alias(_key, alias) {
+      const target = anchors.get(alias.source);
+      if (target) {
+        aliases.set(alias, target);
+        shared.add(target);
+      } else {
+        const { line, col } = lineCounter.linePos(alias.range?.[0] ?? 0);
         process.stderr.write(
-          `${file}:${line}:${col}: R35 Remove ${key.value} from ${uses} with inputs. Its documented default is ${JSON.stringify(defaultValue)}.\n`
+          `${file}:${line}:${col}: Undefined YAML anchor ${alias.source}.\n`
         );
         process.exitCode = 1;
       }
+    },
+    Value(_key, node) {
+      if (node.anchor !== undefined) {
+        anchors.set(node.anchor, node);
+      }
+    }
+  });
+  const resolve = (node: unknown): unknown =>
+    isAlias(node) ? aliases.get(node) : node;
+  const field = (mapping: YAMLMap, name: string): unknown =>
+    resolve(
+      mapping.items.find(({ key }) => {
+        const scalar = resolve(key);
+        return isScalar(scalar) && scalar.value === name;
+      })?.value
+    );
+
+  const jobs = isMap(workflow.contents)
+    ? field(workflow.contents, "jobs")
+    : null;
+  if (!isMap(jobs)) {
+    return;
+  }
+
+  const stepLists = new Set(
+    jobs.items
+      .map(({ value }) => {
+        const job = resolve(value);
+        return isMap(job) ? field(job, "steps") : null;
+      })
+      .filter(isSeq)
+  );
+  const steps = new Set(
+    [...stepLists].flatMap(({ items }) => items.map(resolve).filter(isMap))
+  );
+  const checked = new WeakMap<Node, Set<string>>();
+
+  const checkInputs = ({
+    action,
+    inputs,
+    uses
+  }: {
+    action: ApprovedAction;
+    inputs: YAMLMap;
+    uses: string;
+  }): void => {
+    for (const { key, value } of inputs.items) {
+      const input = resolve(key);
+      const scalar = resolve(value);
+      if (
+        isScalar(input) &&
+        typeof input.value === "string" &&
+        isScalar(scalar)
+      ) {
+        const literal = scalar.value ?? "";
+        const defaultValue = action.inputs[input.value.toLowerCase()];
+        if (
+          typeof defaultValue === "string" &&
+          (typeof literal === "string" ||
+            typeof literal === "boolean" ||
+            (typeof literal === "number" && Number.isSafeInteger(literal))) &&
+          !String(literal).includes(`\${{`) &&
+          String(literal) === defaultValue
+        ) {
+          const { line, col } = lineCounter.linePos(
+            (isAlias(key) ? key.range : input.range)?.[0] ?? 0
+          );
+          const sharesAnchor =
+            shared.has(inputs) ||
+            shared.has(input) ||
+            (isScalar(value) && shared.has(value));
+          const guidance = sharesAnchor
+            ? "Review the anchored input and preserve its alias consumers."
+            : "Omit the redundant input.";
+          process.stderr.write(
+            `${file}:${line}:${col}: R35 ${uses} ${input.value}: Matches documented default ${JSON.stringify(defaultValue)}. ${guidance}\n`
+          );
+          process.exitCode = 1;
+        }
+      }
+    }
+  };
+
+  for (const step of steps) {
+    const actionRef = field(step, "uses");
+    const inputs = field(step, "with");
+    const uses = isScalar(actionRef) ? actionRef.value : null;
+    const action = typeof uses === "string" ? approvedActions.get(uses) : null;
+    if (typeof uses === "string" && action && isMap(inputs)) {
+      const refs = checked.get(inputs) ?? new Set<string>();
+      if (!refs.has(uses)) {
+        refs.add(uses);
+        checked.set(inputs, refs);
+        checkInputs({ action, inputs, uses });
+      }
     }
   }
+};
+
+const files = process.argv.slice(2);
+for (const file of (files.length > 0
+  ? files
+  : globSync(".github/workflows/*.{yaml,yml}")
+).toSorted()) {
+  checkWorkflow(file);
 }

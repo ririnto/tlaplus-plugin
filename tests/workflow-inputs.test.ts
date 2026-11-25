@@ -1,67 +1,101 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { sync } from "cross-spawn";
+
 await test("reports literal defaults only for actions with approved exact-ref metadata", (context) => {
-  const cwd = mkdtempSync(path.join(tmpdir(), "workflow-inputs-"));
+  const directory = mkdtempSync(path.join(tmpdir(), "workflow-inputs-"));
   context.after(() => {
-    rmSync(cwd, { force: true, recursive: true });
+    rmSync(directory, { force: true, recursive: true });
   });
-  const file = path.join(".github", "workflows", "probe.yml");
-  mkdirSync(path.join(cwd, ".github", "workflows"), { recursive: true });
-  const script = fileURLToPath(
-    new URL("../scripts/check-workflow-inputs.ts", import.meta.url)
-  );
-  const controls = `jobs:
+  const file = path.join(directory, "probe.yml");
+  const run = () =>
+    sync("pnpm", ["run", "check:workflows", file], {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      encoding: "utf-8"
+    });
+  const controls = `name: Workflow inputs
+on: push
+jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: &checkout actions/checkout@v7
         with:
           clean: false
           fetch-depth: "\${{ 1 }}"
-          repository: "\${{ github.repository }}"
+          repository: example/repo
           persist-credentials: false
           path: ""
       - uses: actions/setup-node@v7
         with:
-          package-manager-cache: true
+          package-manager-cache: false
       - uses: actions/checkout@v6
-        with:
+        with: &shared
           clean: true
+          ssh-user: &git git
       - uses: example/checkout@v7
+        with: *shared
+      - uses: actions/upload-artifact@v7
         with:
-          clean: true
+          archive: false
+          name: artifact
+          path: build/output.txt
 `;
-  writeFileSync(path.join(cwd, file), controls);
-  const passing = spawnSync(process.execPath, [script], {
-    cwd,
-    encoding: "utf-8"
-  });
+  writeFileSync(file, controls);
+  const passing = run();
   assert.equal(passing.status, 0, passing.stderr);
-  assert.equal(passing.stderr, "");
+  assert.doesNotMatch(passing.stderr, /\bR35\b/u);
 
   writeFileSync(
-    path.join(cwd, file),
-    `${controls}      - uses: actions/checkout@v7
+    file,
+    `${controls}      - uses: *checkout
+        with: *shared
+      - uses: *checkout
         with:
-          clean: true
-          fetch-depth: 1
-          ssh-user: git
+          CLEAN: true
+          fetch-depth: &depth 1
+          ssh-user: *git
+          filter: null
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: *depth
+      - uses: actions/setup-node@v7
+        with:
+          package-manager-cache: true
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          components:
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          components: ""
 `
   );
-  const failing = spawnSync(process.execPath, [script], {
-    cwd,
-    encoding: "utf-8"
-  });
+  const failing = run();
   assert.equal(failing.status, 1, failing.stderr);
-  assert.deepEqual(failing.stderr.trim().split("\n"), [
-    `${file}:23:11: R35 Remove clean from actions/checkout@v7 with inputs. Its documented default is "true".`,
-    `${file}:24:11: R35 Remove fetch-depth from actions/checkout@v7 with inputs. Its documented default is "1".`,
-    `${file}:25:11: R35 Remove ssh-user from actions/checkout@v7 with inputs. Its documented default is "git".`
-  ]);
+  const diagnostics = Array.from(
+    failing.stderr.matchAll(
+      /^(?<location>.*:\d+:\d+): R35 (?<action>\S+) (?<input>\S+):/gmu
+    ),
+    ({ groups }) => `${groups?.location} ${groups?.action} ${groups?.input}`
+  );
+  assert.equal(diagnostics.length, 9, failing.stderr);
+  assert.deepEqual(
+    diagnostics.toSorted(),
+    [
+      `${file}:19:11 actions/checkout@v7 clean`,
+      `${file}:20:11 actions/checkout@v7 ssh-user`,
+      `${file}:32:11 actions/checkout@v7 CLEAN`,
+      `${file}:33:11 actions/checkout@v7 fetch-depth`,
+      `${file}:34:11 actions/checkout@v7 ssh-user`,
+      `${file}:35:11 actions/checkout@v7 filter`,
+      `${file}:41:11 actions/setup-node@v7 package-manager-cache`,
+      `${file}:44:11 graalvm/setup-graalvm@v1 components`,
+      `${file}:47:11 graalvm/setup-graalvm@v1 components`
+    ].toSorted()
+  );
 });
