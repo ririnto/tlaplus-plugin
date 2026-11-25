@@ -260,28 +260,17 @@ const localDefaults = (file: string, contents: string) => {
       ([name]) => !localVariables.has(name.toUpperCase())
     )
   );
-  const git = (cwd: string, ...args: string[]): string | null => {
+  const workflowPath = realpathSync(file);
+  const cwd = path.dirname(workflowPath);
+  const git = (...args: string[]): string | null => {
     const result = spawnSync("git", args, { cwd, encoding: "utf-8", env });
     return result.status === 0 ? result.stdout : null;
   };
-  const workflowPath = realpathSync(file);
-  const root = git(
-    path.dirname(workflowPath),
-    "rev-parse",
-    "--show-toplevel"
-  )?.trimEnd();
-  if (root === undefined || root === "") {
-    return null;
-  }
-  const revision = git(root, "rev-parse", "HEAD")?.trimEnd();
+  const revision = git("rev-parse", "HEAD")?.trimEnd();
   if (
     revision === undefined ||
     revision === "" ||
-    git(
-      root,
-      "show",
-      `${revision}:${path.relative(root, workflowPath).split(path.sep).join("/")}`
-    ) !== contents
+    git("show", `${revision}:./${path.basename(workflowPath)}`) !== contents
   ) {
     return null;
   }
@@ -291,8 +280,7 @@ const localDefaults = (file: string, contents: string) => {
       return null;
     }
     const stem = `${revision}:${path.posix.join(reference.slice(2), "action")}`;
-    const manifest =
-      git(root, "show", `${stem}.yml`) ?? git(root, "show", `${stem}.yaml`);
+    const manifest = git("show", `${stem}.yml`) ?? git("show", `${stem}.yaml`);
     if (manifest === null) {
       return null;
     }
