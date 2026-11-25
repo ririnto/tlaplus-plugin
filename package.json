@@ -24,17 +24,17 @@
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:test": "npm run test:consumer --",
     "check:test-release": "node --test tests/npm-release.test.mjs",
-    "check:test-workflows": "node --test tests/workflow-inputs.test.ts",
     "check:typescript": "tsc",
-    "check:ultracite": "ultracite check",
-    "check:workflows": "node scripts/check-workflow-inputs.ts",
+    "check:ultracite": "ultracite check && run-p lint:workflows test:workflows",
     "fix": "run-p fix:*",
     "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
     "fix:ultracite": "ultracite fix",
+    "lint:workflows": "node scripts/check-workflow-inputs.ts",
     "prepack": "npm run build",
     "prepare": "husky",
     "test": "npm run check:typescript && npm run test:consumer --",
-    "test:consumer": "node tests/consumer-package.mjs"
+    "test:consumer": "node tests/consumer-package.mjs",
+    "test:workflows": "node --test tests/workflow-inputs.test.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
