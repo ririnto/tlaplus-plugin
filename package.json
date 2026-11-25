@@ -24,8 +24,10 @@
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:test": "npm run test:consumer --",
     "check:test-release": "node --test tests/npm-release.test.mjs",
+    "check:test-workflows": "node --test tests/workflow-inputs.test.ts",
     "check:typescript": "tsc",
     "check:ultracite": "ultracite check",
+    "check:workflows": "node scripts/check-workflow-inputs.ts",
     "fix": "run-p fix:*",
     "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
     "fix:ultracite": "ultracite fix",
@@ -46,7 +48,8 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:",
-    "ultracite": "catalog:"
+    "ultracite": "catalog:",
+    "yaml": "catalog:"
   },
   "optionalDependencies": {
     "@tlaplus-mcp/tlaplus-mcp-darwin-arm64": "1.7.4-2026.11.19.1",
