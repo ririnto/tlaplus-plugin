@@ -12,6 +12,7 @@ import {
   LineCounter,
   parseDocument,
   Parser,
+  Scalar,
   visit
 } from "yaml";
 import type { Alias, Node, YAMLMap, YAMLSeq } from "yaml";
@@ -182,17 +183,46 @@ const runnerNumber = (value: number): string => {
   return `${sign}${digits.charAt(0)}${fraction ? `.${fraction}` : ""}E${power < 0 ? "-" : "+"}${String(Math.abs(power)).padStart(2, "0")}`;
 };
 
+const runnerScalarValue = (node: Scalar): unknown => {
+  const { tag, type, value } = node;
+  if (tag === undefined || tag === "tag:yaml.org,2002:str") {
+    return value;
+  }
+  if (type !== Scalar.PLAIN) {
+    return undefined;
+  }
+
+  switch (tag) {
+    case "tag:yaml.org,2002:bool": {
+      return typeof value === "boolean" ? value : undefined;
+    }
+    case "tag:yaml.org,2002:null": {
+      return value === null ? value : undefined;
+    }
+    case "tag:yaml.org,2002:float": {
+      // Actions accepts decimal integers with !!float, which YAML's float resolver leaves as strings.
+      if (typeof value === "string" && /^[-+]?\d+$/u.test(value)) {
+        return Number(value);
+      }
+      return typeof value === "number" ? value : undefined;
+    }
+    case "tag:yaml.org,2002:int": {
+      return typeof value === "number" ? value : undefined;
+    }
+    default: {
+      return undefined;
+    }
+  }
+};
+
 const runnerScalar = (node: unknown): string | null => {
   if (node === null) {
     return "";
   }
-  if (
-    !isScalar(node) ||
-    (node.tag !== undefined && node.tag !== "tag:yaml.org,2002:str")
-  ) {
+  if (!isScalar(node)) {
     return null;
   }
-  const { value } = node;
+  const value = runnerScalarValue(node);
   if (typeof value === "string") {
     return value.includes(`\${{`) ? null : value;
   }

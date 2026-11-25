@@ -243,6 +243,65 @@ jobs:
   assert.deepEqual(reportedLines, new Set([3, 6, 7, 10, 12, 13, 15]));
 });
 
+await test("R35 compares explicitly tagged workflow inputs as Actions scalars", (context) => {
+  const directory = mkdtempSync(path.join(tmpdir(), "workflow-tags-"));
+  context.after(() => {
+    rmSync(directory, { force: true, recursive: true });
+  });
+  const file = path.join(directory, "probe.yml");
+  writeFileSync(
+    file,
+    `name: Tagged workflow inputs
+on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          clean: !!bool TRUE
+          filter: !!null null
+          fetch-depth: !!float 1
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: !!int 0x1
+          sparse-checkout: !!null
+      - uses: actions/checkout@v7
+        with:
+          clean: !!bool false
+          filter: !!str null
+          fetch-depth: !!float 1.0000000000000051
+      - uses: actions/checkout@v7
+        with:
+          clean: !!bool "true"
+          filter: !unknown ""
+          fetch-depth: !!float 0x1
+`
+  );
+
+  const result = run([file]);
+  assert.equal(result.status, 1, result.stderr);
+  const diagnostics = identifiers(result.stderr);
+  assert.equal(diagnostics.length, 5, result.stderr);
+  assert.deepEqual(
+    diagnostics.toSorted((first, second) => first.line - second.line),
+    [
+      [9, "clean"],
+      [10, "filter"],
+      [11, "fetch-depth"],
+      [14, "fetch-depth"],
+      [15, "sparse-checkout"]
+    ].map(([line, input]) => ({
+      category: "omit",
+      column: 11,
+      file,
+      input,
+      line,
+      reference: "actions/checkout@v7"
+    }))
+  );
+});
+
 await test("R35 compares local action defaults only from a proven workflow revision", (context) => {
   const directory = mkdtempSync(path.join(tmpdir(), "workflow-revision-"));
   context.after(() => {
@@ -258,11 +317,15 @@ inputs:
   workflow-midpoint:
     default: 1234567890123440
   metadata-midpoint:
-    default: 1234567890123445
+    default: !!int 1234567890123445
   upper-neighbor:
     default: 1234567890123450
   radix:
     default: -1
+  tagged-bool:
+    default: !!bool True
+  tagged-null:
+    default: !!null ~
 runs:
   using: composite
   steps: []
@@ -279,10 +342,12 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./local
         with:
-          workflow-midpoint: 1234567890123445
+          workflow-midpoint: !!float 1234567890123445
           metadata-midpoint: 1234567890123440
           upper-neighbor: 1234567890123445
           radix: 0xffffffff
+          tagged-bool: true
+          tagged-null: ""
       - uses: ./unavailable
         with:
           mode: test
@@ -325,7 +390,7 @@ jobs:
   });
   assert.equal(result.status, 1, result.stderr);
   const diagnostics = identifiers(result.stderr);
-  assert.equal(diagnostics.length, 3, result.stderr);
+  assert.equal(diagnostics.length, 5, result.stderr);
   assert.deepEqual(
     diagnostics.toSorted((first, second) => first.line - second.line),
     [
@@ -351,6 +416,22 @@ jobs:
         file,
         input: "radix",
         line: 13,
+        reference: "./local"
+      },
+      {
+        category: "omit",
+        column: 11,
+        file,
+        input: "tagged-bool",
+        line: 14,
+        reference: "./local"
+      },
+      {
+        category: "omit",
+        column: 11,
+        file,
+        input: "tagged-null",
+        line: 15,
         reference: "./local"
       }
     ]
