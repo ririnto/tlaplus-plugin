@@ -1,11 +1,22 @@
 # Inspect a TLC behavior
 
-Open the [TLC Behavior Viewer](../src/main/resources/viewer/behavior.html) in a browser from your checkout.
-If you have the native executable, you can write the same page to a file and open it locally.
+## Open the viewer offline
+
+From a checkout, open [`src/main/resources/viewer/behavior.html`](../src/main/resources/viewer/behavior.html) as a local file in your browser.
+In an npm project with a native package that includes the viewer, use the executable in `node_modules/@tlaplus-mcp/tlaplus-mcp-<platform>/`.
+Replace `<platform>` with the suffix of the installed platform package.
+Use `tlaplus-server.exe` on Windows and `tlaplus-server` on other platforms.
+
+For example, on macOS ARM64, run:
 
 ```sh
-./tlaplus-server --behavior-viewer > behavior.html
+node_modules/@tlaplus-mcp/tlaplus-mcp-darwin-arm64/tlaplus-server --behavior-viewer > behavior.html
 ```
+
+Open the exported `behavior.html` as a local file in your browser.
+The `tlaplus-mcp` npm command starts the MCP server and does not forward the viewer flag.
+
+## Load a saved TLC result
 
 1. Run `tlaplus_mcp_tlc_explore` with the absolute path to your model and, if needed, its configuration.
    Set `behaviorLength` to the desired bound.
