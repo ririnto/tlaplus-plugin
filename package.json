@@ -32,6 +32,7 @@
     "lint:workflows": "node scripts/check-workflow-inputs.ts",
     "prepack": "npm run build",
     "prepare": "husky",
+    "test:viewer": "node --test tests/behavior-viewer.test.mjs",
     "test": "npm run check:typescript && npm run test:consumer --",
     "test:consumer": "node tests/consumer-package.mjs",
     "test:workflows": "node --test tests/workflow-inputs.test.ts"
@@ -47,6 +48,7 @@
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
+    "playwright": "catalog:",
     "typescript": "catalog:",
     "ultracite": "catalog:",
     "yaml": "catalog:"

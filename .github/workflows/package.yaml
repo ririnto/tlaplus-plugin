@@ -31,6 +31,25 @@ jobs:
         run: |-
           matrix=$(jq -ce . .github/package-matrix.json)
           echo "value=$matrix" >> "$GITHUB_OUTPUT"
+  behavior-viewer:
+    name: TLC Behavior Viewer
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Run the Chromium regression
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/playwright
+        run: |-
+          pnpm exec playwright install --with-deps chromium
+          pnpm run test:viewer
   native-package:
     name: Native package (${{ matrix.platform }})
     needs: platforms
@@ -46,6 +65,7 @@ jobs:
         with:
           node-version: 24
           cache: ${{ !matrix.alpine_container && 'pnpm' || '' }}
+          cache-dependency-path: pnpm-lock.yaml
       - uses: graalvm/setup-graalvm@v1
         if: ${{ !matrix.alpine_container }}
         with:
