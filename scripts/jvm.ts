@@ -1,13 +1,11 @@
-/// <reference path="./cross-spawn.d.ts" />
-
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { sync } from "cross-spawn";
 
-import { readPackageManifest } from "./manifest.mjs";
-import { tlaVersion } from "./tla-version.mjs";
+import { readPackageManifest } from "./manifest.ts";
+import { tlaVersion } from "./tla-version.ts";
 
 /**
  * The repository root used by Maven and packaging commands.
@@ -18,9 +16,9 @@ const tlaRelease = `https://github.com/tlaplus/tlaplus/releases/download/v${tlaV
 
 /**
  * Runs Maven from the repository root with the package version.
- * @param {readonly string[]} args Maven goals and additional command-line options.
+ * @param args Maven goals and additional command-line options.
  */
-export const runMaven = (args) => {
+export const runMaven = (args: readonly string[]) => {
   const { error, status, signal } = sync(
     "mvn",
     ["-B", "-ntp", `-Drevision=${version}`, ...args],

@@ -17,12 +17,8 @@ import { text } from "node:stream/consumers";
 import { before, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { nativePlatform } from "../src/native-platform.mjs";
-import {
-  array,
-  object,
-  releaseManifest
-} from "./fixtures/npm-release-data.mjs";
+import { nativePlatform } from "../src/native-platform.ts";
+import { array, object, releaseManifest } from "./fixtures/npm-release-data.ts";
 
 const main = "@tlaplus-mcp/tlaplus-mcp";
 const platforms = [
@@ -46,7 +42,7 @@ const source = path.join(root, "source");
 const bin = path.join(root, "bin");
 const repo = fileURLToPath(new URL("../", import.meta.url));
 const shim = fileURLToPath(
-  new URL("fixtures/npm-release-command.mjs", import.meta.url)
+  new URL("fixtures/npm-release-command.ts", import.meta.url)
 );
 const baseEnv = {
   HOME: process.env.HOME,
@@ -54,18 +50,21 @@ const baseEnv = {
     .filter(Boolean)
     .join(path.delimiter)
 };
-/** @type {string[]} */
-const paths = [];
-/** @type {ReturnType<typeof releaseManifest>} */
-let manifest;
+const paths: string[] = [];
+let manifest: ReturnType<typeof releaseManifest>;
 
 /**
- * @param {string} command Executable to run.
- * @param {string[]} args Command arguments.
- * @param {{cwd: string, env: NodeJS.ProcessEnv}} options Working directory and environment.
- * @param {number} [status] Expected exit.
+ * @param command Executable to run.
+ * @param args Command arguments.
+ * @param options Working directory and environment.
+ * @param [status] Expected exit.
  */
-const run = async (command, args, { cwd, env }, status = 0) => {
+const run = async (
+  command: string,
+  args: string[],
+  { cwd, env }: { cwd: string; env: NodeJS.ProcessEnv },
+  status = 0
+) => {
   const child = spawn(command, args, {
     cwd,
     env,
@@ -81,10 +80,10 @@ const run = async (command, args, { cwd, env }, status = 0) => {
 };
 
 /**
- * @param {string[]} args npm arguments.
- * @param {string} [cwd] Source package directory.
+ * @param args npm arguments.
+ * @param [cwd] Source package directory.
  */
-const realNpm = async (args, cwd = source) => {
+const realNpm = async (args: string[], cwd = source) => {
   const { stdout, stderr } = await run(
     "npm",
     [
@@ -101,13 +100,19 @@ const realNpm = async (args, cwd = source) => {
 };
 
 /**
- * @param {string} artifacts Packaged release artifacts.
- * @param {NodeJS.ProcessEnv} fixtureEnv Release command environment.
- * @param {string} mode Release command.
- * @param {number} [status] Expected process exit.
- * @param {NodeJS.ProcessEnv} [env] Fixture overrides.
+ * @param artifacts Packaged release artifacts.
+ * @param fixtureEnv Release command environment.
+ * @param mode Release command.
+ * @param [status] Expected process exit.
+ * @param [env] Fixture overrides.
  */
-const runRelease = async (artifacts, fixtureEnv, mode, status = 0, env = {}) =>
+const runRelease = async (
+  artifacts: string,
+  fixtureEnv: NodeJS.ProcessEnv,
+  mode: string,
+  status = 0,
+  env: NodeJS.ProcessEnv = {}
+) =>
   await run(
     "bash",
     ["scripts/npm-release.sh", mode, tag, artifacts],
@@ -116,10 +121,9 @@ const runRelease = async (artifacts, fixtureEnv, mode, status = 0, env = {}) =>
   );
 
 /**
- * @template T
- * @param {Promise<T>[]} tasks Operations that share the temporary root.
+ * @param tasks Operations that share the temporary root.
  */
-const finishAll = async (tasks) => {
+const finishAll = async <T>(tasks: Promise<T>[]) => {
   const results = await Promise.allSettled(tasks);
   return results.map((result) => {
     if (result.status === "rejected") {
@@ -131,8 +135,8 @@ const finishAll = async (tasks) => {
   });
 };
 
-/** @param {string} file Record file. */
-const readRecords = (file) => {
+/** @param file Record file. */
+const readRecords = (file: string) => {
   if (!existsSync(file)) {
     return [];
   }
@@ -160,13 +164,13 @@ const scenario = () => {
       readRecords(path.join(artifacts, "npm-stage", "submissions.ndjson")).map(
         (line) => object(JSON.parse(line))
       ),
-    /** @param {...string} prefix Leading command arguments. */
-    calls: (...prefix) =>
+    /** @param prefix Leading command arguments. */
+    calls: (...prefix: string[]) =>
       readRecords(path.join(workspace, "commands.ndjson"))
         .map((line) => array(JSON.parse(line)))
         .filter((call) => prefix.every((arg, index) => arg === call[index])),
-    /** @param {Record<string, Record<string, string>>} state Tags by package. */
-    setRegistry: (state) => {
+    /** @param state Tags by package. */
+    setRegistry: (state: Record<string, Record<string, string>>) => {
       writeFileSync(
         path.join(workspace, "registry.json"),
         JSON.stringify(state)
@@ -176,10 +180,12 @@ const scenario = () => {
 };
 
 /**
- * @param {string[]} [approved] Packages approved in the fixture.
- * @returns {Record<string, Record<string, string>>} Tags by package.
+ * @param [approved] Packages approved in the fixture.
+ * @returns Tags by package.
  */
-const registryState = (approved = names) => {
+const registryState = (
+  approved = names
+): Record<string, Record<string, string>> => {
   const older = "1.7.4-2026.12.9.9";
   return Object.fromEntries(
     approved.map((name) => [
@@ -342,7 +348,7 @@ try {
         assert.match(result.stderr, /npm exited 42/u);
         assert.match(result.stderr, /fixture rejected request/u);
         const records = stageRecords();
-        assert.equal(records.at(-1).state, "unconfirmed");
+        assert.equal(records.at(-1)?.state, "unconfirmed");
         assert.deepEqual(
           records
             .filter((record) => record.state === "submitted")
@@ -363,7 +369,7 @@ try {
         });
         assert.match(stderr, /without a matching stage receipt/u);
         const records = stageRecords();
-        assert.equal(records.at(-1).state, "unconfirmed");
+        assert.equal(records.at(-1)?.state, "unconfirmed");
         assert.equal(calls("npm", "stage", "publish").length, 1);
       });
 
@@ -414,7 +420,7 @@ try {
           await invoke("release", 42, { FAIL_SMOKE: "1" });
           const smoke = [
             process.execPath,
-            "scripts/registry-smoke.mjs",
+            "scripts/registry-smoke.ts",
             version,
             tools,
             nativePlatform(),
@@ -462,8 +468,8 @@ try {
       void test("an older approval cannot move either consumer alias", async () => {
         const { calls, invoke, setRegistry, workspace } = scenario();
         await invoke("stage");
-        /** @param {string} alias Dist-tag to protect. */
-        const rejectsOlderApproval = async (alias) => {
+        /** @param alias Dist-tag to protect. */
+        const rejectsOlderApproval = async (alias: string) => {
           const state = registryState();
           state[main][alias] = "1.7.4-2026.12.12.10";
           setRegistry(state);

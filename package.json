@@ -19,11 +19,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "build": "node scripts/build.ts",
     "check": "run-p check:*",
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:test": "npm run test:consumer --",
-    "check:test-release": "node --test tests/npm-release.test.mjs",
+    "check:test-release": "node --test tests/npm-release.test.ts",
     "check:typescript": "tsc",
     "check:ultracite": "ultracite check && run-p lint:workflows test:workflows",
     "fix": "run-p fix:*",
@@ -32,9 +32,9 @@
     "lint:workflows": "node scripts/check-workflow-inputs.ts",
     "prepack": "npm run build",
     "prepare": "husky",
-    "test:viewer": "node --test tests/behavior-viewer.test.mjs",
+    "test:viewer": "node --test tests/behavior-viewer.test.ts",
     "test": "npm run check:typescript && npm run test:consumer --",
-    "test:consumer": "node tests/consumer-package.mjs",
+    "test:consumer": "node tests/consumer-package.ts",
     "test:workflows": "node --test tests/workflow-inputs.test.ts"
   },
   "devDependencies": {

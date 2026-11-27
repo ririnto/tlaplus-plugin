@@ -76,7 +76,7 @@ jobs:
         if: ${{ !matrix.alpine_container }}
         shell: pwsh
         run: |-
-          $platform = node --input-type=module -e 'import { nativePlatform } from "./src/native-platform.mjs"; console.log(nativePlatform())'
+          $platform = node --input-type=module -e 'import { nativePlatform } from "./src/native-platform.ts"; console.log(nativePlatform())'
           if ($LASTEXITCODE -ne 0 -or $platform -ne $env:EXPECTED_PLATFORM) {
             throw "Runner platform does not match $env:EXPECTED_PLATFORM"
           }
@@ -99,8 +99,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |-
-          npm version "$(node scripts/release-version.mjs "$RELEASE_TAG")" --no-git-tag-version
-          node scripts/sync-optional-deps.mjs
+          npm version "$(node scripts/release-version.ts "$RELEASE_TAG")" --no-git-tag-version
+          node scripts/sync-optional-deps.ts
       - name: Build, pack, and test native packages
         if: ${{ !matrix.alpine_container && !matrix.visual_studio }}
         env:
@@ -196,7 +196,7 @@ jobs:
               git init --quiet
               export JAVA_HOME=/opt/liberica GRAALVM_HOME=/opt/liberica
               export PATH="/opt/liberica/bin:$PATH"
-              test "$(node --input-type=module -e "import {nativePlatform} from \"./src/native-platform.mjs\"; console.log(nativePlatform())")" = "$EXPECTED_PLATFORM"
+              test "$(node --input-type=module -e "import {nativePlatform} from \"./src/native-platform.ts\"; console.log(nativePlatform())")" = "$EXPECTED_PLATFORM"
               echo "Alpine $(cat /etc/alpine-release)"
               native-image --version
               mvn --version

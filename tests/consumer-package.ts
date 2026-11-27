@@ -12,9 +12,9 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { prepareTlaLibrary, root, runMaven } from "../scripts/jvm.mjs";
-import { readManifest, readPackageManifest } from "../scripts/manifest.mjs";
-import { linuxLibc, nativePlatform } from "../src/native-platform.mjs";
+import { prepareTlaLibrary, root, runMaven } from "../scripts/jvm.ts";
+import { readManifest, readPackageManifest } from "../scripts/manifest.ts";
+import { linuxLibc, nativePlatform } from "../src/native-platform.ts";
 
 const npm = process.env.npm_execpath;
 if (npm === undefined || npm.length === 0) {
@@ -31,8 +31,7 @@ await Promise.all(
         "tlaplus" in mcpServers,
       `Expected a TLA+ MCP server in ${file}`
     );
-    /** @type {unknown} */
-    const server = mcpServers.tlaplus;
+    const server: unknown = mcpServers.tlaplus;
     assert.ok(
       server !== null &&
         typeof server === "object" &&
@@ -112,8 +111,7 @@ try {
   if (process.platform !== "win32") {
     await chmod(node, 0o755);
   }
-  /** @type {NodeJS.ProcessEnv} */
-  const env = Object.fromEntries(
+  const env: NodeJS.ProcessEnv = Object.fromEntries(
     Object.entries(process.env).filter(
       ([key]) =>
         !/^(?:path|java_home(?:_.*)?|jd(?-i:[Kk])_home|jre_home)$/iu.test(key)

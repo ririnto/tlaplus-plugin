@@ -1,8 +1,8 @@
 /**
  * Returns the C library used by the current Node.js process on Linux.
- * @returns {"glibc" | "musl" | null} The detected libc, or null outside Linux.
+ * @returns The detected libc, or null outside Linux.
  */
-export const linuxLibc = () => {
+export const linuxLibc = (): "glibc" | "musl" | null => {
   if (process.platform !== "linux") {
     return null;
   }

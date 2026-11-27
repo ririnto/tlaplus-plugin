@@ -20,10 +20,10 @@ assert.equal(registryUrl.username, "");
 assert.equal(registryUrl.password, "");
 
 /**
- * @param {unknown} value JSON object to validate.
- * @returns {Record<string, unknown>} Object fields.
+ * @param value JSON object to validate.
+ * @returns Object fields.
  */
-const object = (value) => {
+const object = (value: unknown): Record<string, unknown> => {
   assert.ok(
     typeof value === "object" && value !== null && !Array.isArray(value)
   );
@@ -31,16 +31,16 @@ const object = (value) => {
 };
 
 /**
- * @param {unknown} value JSON array to validate.
- * @returns {readonly unknown[]} Array items.
+ * @param value JSON array to validate.
+ * @returns Array items.
  */
-const array = (value) => {
+const array = (value: unknown): readonly unknown[] => {
   assert.ok(Array.isArray(value));
   return value;
 };
 
-/** @param {number} deadline Last time to start a registry lookup, in milliseconds. */
-const waitForRelease = async (deadline) => {
+/** @param deadline Last time to start a registry lookup, in milliseconds. */
+const waitForRelease = async (deadline: number) => {
   const remaining = deadline - Date.now();
   assert.ok(
     remaining > 0,
@@ -160,22 +160,23 @@ try {
       timeout: 45_000
     }
   );
-  /** @type {Promise<unknown[]>} */
-  const exited = once(child, "exit");
-  /** @type {AsyncIterator<string, undefined, undefined>} */
-  const responses = createInterface({ input: child.stdout })[
-    Symbol.asyncIterator
-  ]();
-  /** @param {Record<string, unknown>} message JSON-RPC message. */
-  const send = (message) =>
+  const exited: Promise<unknown[]> = once(child, "exit");
+  const responses: AsyncIterator<string, undefined, undefined> =
+    createInterface({ input: child.stdout })[Symbol.asyncIterator]();
+  /** @param message JSON-RPC message. */
+  const send = (message: Record<string, unknown>) =>
     child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", ...message })}\n`);
   /**
-   * @param {number} id JSON-RPC request ID.
-   * @param {string} method MCP method to call.
-   * @param {Record<string, unknown>} params Method parameters.
-   * @returns {Promise<Record<string, unknown>>} JSON-RPC result.
+   * @param id JSON-RPC request ID.
+   * @param method MCP method to call.
+   * @param params Method parameters.
+   * @returns JSON-RPC result.
    */
-  const request = async (id, method, params) => {
+  const request = async (
+    id: number,
+    method: string,
+    params: Record<string, unknown>
+  ): Promise<Record<string, unknown>> => {
     send({ id, method, params });
     const response = await responses.next();
     assert.equal(response.done, false, `MCP ended before ${method}`);

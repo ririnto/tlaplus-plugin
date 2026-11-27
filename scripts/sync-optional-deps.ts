@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-import { readPackageManifest } from "./manifest.mjs";
+import { readPackageManifest } from "./manifest.ts";
 
 const file = fileURLToPath(new URL("../package.json", import.meta.url));
 const manifest = await readPackageManifest(file);

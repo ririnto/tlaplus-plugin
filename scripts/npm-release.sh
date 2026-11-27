@@ -13,8 +13,8 @@ fi
 mode=$1
 git_tag=$2
 root=$(cd "$3" && pwd -P)
-version=$(node scripts/release-version.mjs "$git_tag")
-tools_tag=$(node --input-type=module -e 'import { tlaDistTag } from "./scripts/tla-version.mjs"; console.log(tlaDistTag)')
+version=$(node scripts/release-version.ts "$git_tag")
+tools_tag=$(node --input-type=module -e 'import { tlaDistTag } from "./scripts/tla-version.ts"; console.log(tlaDistTag)')
 holding_tag="staged-$version"
 commit=$(git rev-parse HEAD)
 main=$(jq -er .name package.json)
@@ -197,13 +197,13 @@ promote)
   ;;
 release)
   check_registry all exact
-  platform=$(node --input-type=module -e 'import { nativePlatform } from "./src/native-platform.mjs"; console.log(nativePlatform())')
+  platform=$(node --input-type=module -e 'import { nativePlatform } from "./src/native-platform.ts"; console.log(nativePlatform())')
   (
     smoke_home=$(mktemp -d)
     trap 'rm -rf -- "$smoke_home"' EXIT
     node_bin=$(node -p 'process.execPath')
     env -i HOME="$smoke_home" PATH="${node_bin%/*}" \
-      "$node_bin" scripts/registry-smoke.mjs "$version" "$tools_tag" "$platform" "$registry"
+      "$node_bin" scripts/registry-smoke.ts "$version" "$tools_tag" "$platform" "$registry"
   )
   check_registry all exact
   repo=ririnto/tlaplus-plugin
