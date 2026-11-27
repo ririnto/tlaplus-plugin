@@ -15,9 +15,9 @@ import path from "node:path";
 
 import { build } from "esbuild";
 
-import { nativePlatform } from "../src/native-platform.mjs";
-import { prepareTlaLibrary, root, runMaven } from "./jvm.mjs";
-import { readPackageManifest } from "./manifest.mjs";
+import { nativePlatform } from "../src/native-platform.ts";
+import { prepareTlaLibrary, root, runMaven } from "./jvm.ts";
+import { readPackageManifest } from "./manifest.ts";
 
 const manifest = await readPackageManifest(path.join(root, "package.json"));
 const localGitVariables = new Set(
@@ -32,10 +32,10 @@ const stage = await mkdtemp(path.join(root, ".build-"));
 const dist = path.join(stage, "dist");
 
 /**
- * @param {string} repo Repository name in the TLA+ organization.
- * @param {readonly string[]} paths Files or directories to check out.
+ * @param repo Repository name in the TLA+ organization.
+ * @param paths Files or directories to check out.
  */
-const checkout = (repo, paths) => {
+const checkout = (repo: string, paths: readonly string[]) => {
   const cwd = path.join(stage, repo);
   const options = { cwd, env: gitEnvironment };
   execFileSync("git", ["init", "--quiet", cwd], { env: gitEnvironment });

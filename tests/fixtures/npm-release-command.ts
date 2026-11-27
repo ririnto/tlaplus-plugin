@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { object, releaseManifest } from "./npm-release-data.mjs";
+import { object, releaseManifest } from "./npm-release-data.ts";
 
 const [invoked, ...args] = process.argv.slice(2);
 const cmd = path.basename(invoked);
@@ -47,7 +47,7 @@ if (cmd === "git" && args[0] === "rev-parse" && args[1] === "HEAD") {
     assert.deepEqual(args.slice(0, 2), ["release", "create"]);
   } else if (cmd === "env") {
     assert.equal(args[0], "-i");
-    assert.equal(args[4], "scripts/registry-smoke.mjs");
+    assert.equal(args[4], "scripts/registry-smoke.ts");
     if (process.env.FAIL_SMOKE === "1") {
       process.exitCode = 42;
     }

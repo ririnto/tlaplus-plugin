@@ -92,8 +92,8 @@ jobs:
         shell: bash
         run: |-
           matrix=$(jq -ce . .github/package-matrix.json)
-          version=$(node scripts/release-version.mjs "$GITHUB_REF_NAME")
-          dist_tag=$(node --input-type=module -e 'import { tlaDistTag } from "./scripts/tla-version.mjs"; console.log(tlaDistTag)')
+          version=$(node scripts/release-version.ts "$GITHUB_REF_NAME")
+          dist_tag=$(node --input-type=module -e 'import { tlaDistTag } from "./scripts/tla-version.ts"; console.log(tlaDistTag)')
           commit=$(git rev-parse HEAD)
           {
             echo "matrix=$matrix"
@@ -121,8 +121,8 @@ jobs:
         shell: bash
         run: |-
           curl --fail --silent --show-error --retry 3 --max-time 15 \
-            "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$RELEASE_COMMIT/scripts/registry-smoke.mjs" \
-            --output registry-smoke.mjs
+            "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$RELEASE_COMMIT/scripts/registry-smoke.ts" \
+            --output registry-smoke.ts
       - uses: actions/setup-node@v7
         if: ${{ !matrix.alpine_container }}
         with:
@@ -132,7 +132,7 @@ jobs:
       - name: Install from public npm and exercise MCP
         if: ${{ !matrix.alpine_container }}
         shell: bash
-        run: node registry-smoke.mjs "$RELEASE_VERSION" "$RELEASE_DIST_TAG" "$EXPECTED_PLATFORM"
+        run: node registry-smoke.ts "$RELEASE_VERSION" "$RELEASE_DIST_TAG" "$EXPECTED_PLATFORM"
       - name: Install from public npm and exercise MCP in Alpine
         if: matrix.alpine_container
         shell: bash
@@ -146,5 +146,5 @@ jobs:
             exit 1
           fi
           docker run --rm --platform "linux/$CONTAINER_ARCH" \
-            --mount "type=bind,source=$PWD/registry-smoke.mjs,target=/registry-smoke.mjs,readonly" \
-            "$ALPINE_CONTAINER" node /registry-smoke.mjs "$RELEASE_VERSION" "$RELEASE_DIST_TAG" "$EXPECTED_PLATFORM"
+            --mount "type=bind,source=$PWD/registry-smoke.ts,target=/registry-smoke.ts,readonly" \
+            "$ALPINE_CONTAINER" node /registry-smoke.ts "$RELEASE_VERSION" "$RELEASE_DIST_TAG" "$EXPECTED_PLATFORM"

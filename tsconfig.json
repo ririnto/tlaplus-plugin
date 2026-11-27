@@ -6,13 +6,9 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "allowJs": true
+    "allowImportingTsExtensions": true
   },
   "include": [
-    "**/*.mjs",
-    "**/.*/**/*.mjs",
-    "**/.*.mjs",
-    "**/.*/**/.*.mjs",
     "**/*.ts",
     "**/.*/**/*.ts",
     "**/.*.ts",

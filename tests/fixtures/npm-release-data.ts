@@ -1,35 +1,35 @@
 import assert from "node:assert/strict";
 
 /**
- * @param {unknown} value JSON object fields.
- * @returns {value is Record<string, unknown>} Whether the value is a JSON object.
+ * @param value JSON object fields.
+ * @returns Whether the value is a JSON object.
  */
-const isObject = (value) =>
+const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-/** @param {unknown} value JSON object fields. */
-export const object = (value) => {
+/** @param value JSON object fields. */
+export const object = (value: unknown) => {
   assert.ok(isObject(value));
   return value;
 };
 
 /**
- * @param {unknown} value JSON array items.
- * @returns {readonly unknown[]} Array items.
+ * @param value JSON array items.
+ * @returns Array items.
  */
-export const array = (value) => {
+export const array = (value: unknown): readonly unknown[] => {
   assert.ok(Array.isArray(value));
   return value;
 };
 
-/** @param {unknown} value JSON string field. */
-const string = (value) => {
+/** @param value JSON string field. */
+const string = (value: unknown) => {
   assert.ok(typeof value === "string");
   return value;
 };
 
-/** @param {string} text Release manifest JSON. */
-export const releaseManifest = (text) => {
+/** @param text Release manifest JSON. */
+export const releaseManifest = (text: string) => {
   const data = object(JSON.parse(text));
   return {
     commit: string(data.commit),

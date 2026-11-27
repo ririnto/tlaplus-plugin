@@ -1,4 +1,4 @@
-import { tlaVersion } from "./tla-version.mjs";
+import { tlaVersion } from "./tla-version.ts";
 
 const tag = process.argv[2] ?? "";
 if (!/^20[0-9]{2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$/u.test(tag)) {
