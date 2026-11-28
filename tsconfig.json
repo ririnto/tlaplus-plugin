@@ -8,15 +8,6 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true
   },
-  "include": [
-    "**/*.ts",
-    "**/.*/**/*.ts",
-    "**/.*.ts",
-    "**/.*/**/.*.ts",
-    "**/*.mts",
-    "**/.*/**/*.mts",
-    "**/.*.mts",
-    "**/.*/**/.*.mts"
-  ],
+  "include": ["**/*"],
   "exclude": ["dist"]
 }

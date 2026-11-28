@@ -31,7 +31,7 @@ const platforms = [
   "win32-x64"
 ];
 const names = [...platforms.map((platform) => `${main}-${platform}`), main];
-const tag = "2026.12.12.01";
+const tag = "2026.12.12-1";
 const version = "1.7.4-2026.12.12.1";
 const holding = `staged-${version}`;
 const tools = "tlaplus-1.7.4";
@@ -200,6 +200,29 @@ const registryState = (
 };
 
 try {
+  await test("validates release tags and produces npm versions", async () => {
+    await Promise.all(
+      [
+        ["2026.11.27.01", ""],
+        ["2026.11.27", ""],
+        ["2026.11.27-01", ""],
+        ["2026.11.27-1.2", ""],
+        ["2026.11.27-0", ""],
+        ["2026.11.27-1", "1.7.4-2026.11.27.1\n"],
+        ["2026.11.27-12", "1.7.4-2026.11.27.12\n"],
+        ["2026.01.02-1", "1.7.4-2026.1.2.1\n"]
+      ].map(async ([releaseTag, npmVersion]) => {
+        const { stdout } = await run(
+          process.execPath,
+          ["scripts/release-version.ts", releaseTag],
+          { cwd: repo, env: baseEnv },
+          npmVersion === "" ? 1 : 0
+        );
+        assert.equal(stdout, npmVersion, releaseTag);
+      })
+    );
+  });
+
   await describe(
     "npm release",
     {

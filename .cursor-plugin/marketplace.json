@@ -3,6 +3,9 @@
   "owner": {
     "name": "ririnto"
   },
+  "metadata": {
+    "version": "2026.11.19-2"
+  },
   "plugins": [
     {
       "name": "tlaplus-plugin",
