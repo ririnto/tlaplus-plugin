@@ -136,10 +136,12 @@ The tarball includes upstream licenses and works offline after installation.
 The pull request and release workflows share one build, test, and upload procedure.
 A release stamps the package version before the build and stages the resulting tested tarballs through npm trusted publishing.
 
-Version the plugin by UTC build date and a two-digit build number, for example `2026.11.20.01`.
-Start a release by pushing a Git tag with the plugin version, for example `2026.11.20.01`.
-The publish workflow prepends the TLA+ tools version and removes leading zeroes from numeric date and build fields to produce the npm version, for example `1.7.4-2026.11.20.1`.
-The Git tag and GitHub release retain the original CalVer spelling.
+Use `yyyy.MM.dd-seq` for the plugin version, for example `2026.11.28-1`.
+Pad the UTC date fields and start each day's sequence at `1` without leading zeroes.
+Use the same plugin version in the editor manifests and marketplace catalogs.
+Start a release by pushing a Git tag with that version.
+The publish workflow uses the TLA+ tools version and an unpadded, dot-separated date and sequence for the npm version, for example `1.7.4-2026.11.28.1`.
+The Git tag and GitHub release use the plugin version.
 The MCP server reports the package version in its initialize response.
 Follow the [npm release procedure](docs/npm-release.md) to approve the seven native packages, approve the main package, move the consumer dist-tags, and create the GitHub Release.
 

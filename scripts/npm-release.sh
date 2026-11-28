@@ -136,7 +136,7 @@ read_tags() {
 check_aliases() {
   local name=$1 tags=$2 requirements=$3
   if ! jq -e --arg version "$version" --arg toolsTag "$tools_tag" --arg requirements "$requirements" '
-    def date: capture("^[0-9]+\\.[0-9]+\\.[0-9]+-(?<calver>20[0-9]{2}\\.[0-9]+\\.[0-9]+\\.[0-9]+)$").calver
+    def date: capture("^[0-9]+\\.[0-9]+\\.[0-9]+-(?<calver>[0-9]{1,4}\\.[0-9]+\\.[0-9]+\\.[0-9]+)$").calver
       | split(".") | map(tonumber);
     type == "object" and ([.latest, .[$toolsTag]] | all(
       if $requirements == "exact" then . == $version
