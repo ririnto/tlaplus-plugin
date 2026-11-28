@@ -26,28 +26,28 @@ Add it to the release matrices only after a native ARM64 build passes the same J
 
 ```sh
 npm install @tlaplus-mcp/tlaplus-mcp
-npm exec -- tlaplus-mcp
 ```
 
-`npx -y @tlaplus-mcp/tlaplus-mcp` resolves the latest release and starts the server when the package is absent from the current project.
-`npx` can use the version already installed in the current project.
+Run `tlaplus-mcp` when the executable is on `PATH`.
+Otherwise, run `npm exec -- tlaplus-mcp` from the npm project that installed the package.
 
 ### Register the MCP server
 
-Each configuration below uses `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release when no local version is installed.
+Use these configurations when `tlaplus-mcp` is on the MCP client's `PATH`.
+If it is absent, use `npx` as the command and `["-y", "@tlaplus-mcp/tlaplus-mcp"]` as the arguments.
+That command uses the package installed in the current npm project or resolves the latest release.
 
 Claude Code:
 
 ```sh
-claude mcp add tlaplus -- npx -y @tlaplus-mcp/tlaplus-mcp
+claude mcp add tlaplus -- tlaplus-mcp
 ```
 
 Codex, in `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.tlaplus]
-command = "npx"
-args = ["-y", "@tlaplus-mcp/tlaplus-mcp"]
+command = "tlaplus-mcp"
 ```
 
 Cursor, in `~/.cursor/mcp.json`:
@@ -56,14 +56,13 @@ Cursor, in `~/.cursor/mcp.json`:
 {
   "mcpServers": {
     "tlaplus": {
-      "command": "npx",
-      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp"]
+      "command": "tlaplus-mcp"
     }
   }
 }
 ```
 
-For a general MCP client, use `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release when no local version is installed.
+Use the same command and arguments in other stdio MCP clients.
 In an npm project you can instead set `command` to `node` with `node_modules/@tlaplus-mcp/tlaplus-mcp/dist/server.mjs`, or run the platform binary directly from `node_modules/@tlaplus-mcp/tlaplus-mcp-<platform>/tlaplus-server`.
 The executable includes the TLA+ standard modules and the knowledge base.
 The server writes JSON-RPC to stdout and its own diagnostics to stderr.
@@ -71,7 +70,7 @@ Only run trusted specifications and worker options.
 
 ### Install the editor plugin from a checkout
 
-The editor manifests use `npx -y @tlaplus-mcp/tlaplus-mcp` to resolve the latest release when no local version is installed.
+The editor plugins run `tlaplus-mcp` when it is on `PATH`. If it is absent, they run `npx -y @tlaplus-mcp/tlaplus-mcp`.
 
 From the checkout root, run the command for your editor.
 
@@ -81,7 +80,7 @@ codex plugin marketplace add .
 codex plugin add tlaplus-plugin@tlaplus-plugin
 ```
 
-For Cursor, copy the `.cursor-plugin/` directory into `~/.cursor/plugins/local/tlaplus-plugin/` and reload the window.
+For Cursor, copy `.cursor-plugin/` and `mcp.json` into `~/.cursor/plugins/local/tlaplus-plugin/` and reload the window.
 
 ## Tools and references
 

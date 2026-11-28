@@ -48,7 +48,11 @@ jobs:
         env:
           PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/playwright
         run: |-
-          pnpm exec playwright install --with-deps chromium
+          if [ -n "$(command -v playwright)" ]; then
+            playwright install --with-deps chromium
+          else
+            pnpm exec playwright install --with-deps chromium
+          fi
           pnpm run test:viewer
   native-package:
     name: Native package (${{ matrix.platform }})
@@ -200,10 +204,17 @@ jobs:
               echo "Alpine $(cat /etc/alpine-release)"
               native-image --version
               mvn --version
+              run_pnpm() {
+                if [ -n "$(command -v pnpm)" ]; then
+                  pnpm "$@"
+                else
+                  npx --yes "$manager" "$@"
+                fi
+              }
               manager=$(node -p "require(\"./package.json\").packageManager")
-              npx --yes "$manager" install --frozen-lockfile
+              run_pnpm install --frozen-lockfile
               npm test
-              npx --yes "$manager" run check:ultracite
+              run_pnpm run check:ultracite
               readelf -lW npm/tlaplus-server | grep -F "Requesting program interpreter: /lib/ld-musl-"
               readelf -dW npm/tlaplus-server
               if readelf --version-info -W npm/tlaplus-server | grep -Fq "GLIBC_"; then

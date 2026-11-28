@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "tlaplus": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "-e",
+        "const { spawn, spawnSync } = require('node:child_process');\nconst { join } = require('node:path');\nconst options = { stdio: 'inherit' };\nlet child;\n\nif (process.platform === 'win32') {\n  const where = join(process.env.SystemRoot, 'System32', 'where.exe');\n  const installed = spawnSync(where, ['/q', '$PATH:tlaplus-mcp']).status === 0;\n  child = spawn(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', installed ? 'tlaplus-mcp' : 'npx -y @tlaplus-mcp/tlaplus-mcp'], {\n    ...options,\n    env: installed ? { ...process.env, NoDefaultCurrentDirectoryInExePath: '1' } : process.env\n  });\n} else {\n  child = spawn('/bin/sh', ['-c', 'if [ -n \"$(command -v tlaplus-mcp)\" ]; then\\n  exec tlaplus-mcp\\nfi\\nexec npx -y @tlaplus-mcp/tlaplus-mcp'], options);\n}\n\nconst signals = ['SIGHUP', 'SIGINT', 'SIGTERM'];\nconst forward = (signal) => child.kill(signal);\nfor (const signal of signals) {\n  process.on(signal, forward);\n}\nchild.once('error', (error) => console.error(error.message));\nchild.once('close', (code, signal) => {\n  for (const name of signals) {\n    process.removeListener(name, forward);\n  }\n  if (signal !== null && process.platform !== 'win32') {\n    process.kill(process.pid, signal);\n  } else {\n    process.exitCode = code ?? 1;\n  }\n});"
+      ]
+    }
+  }
+}
