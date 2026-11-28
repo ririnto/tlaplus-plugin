@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { prepareTlaLibrary, root, runMaven } from "../scripts/jvm.ts";
-import { readManifest, readPackageManifest } from "../scripts/manifest.ts";
+import { readPackageManifest } from "../scripts/manifest.ts";
 import { linuxLibc, nativePlatform } from "../src/native-platform.ts";
 
 const npm = process.env.npm_execpath;
@@ -21,29 +21,6 @@ if (npm === undefined || npm.length === 0) {
   throw new Error("Run this check with npm test");
 }
 const packageName = "@tlaplus-mcp/tlaplus-mcp";
-await Promise.all(
-  ["claude", "codex", "cursor"].map(async (editor) => {
-    const file = path.join(root, `.${editor}-plugin/plugin.json`);
-    const { mcpServers } = await readManifest(file);
-    assert.ok(
-      mcpServers !== null &&
-        typeof mcpServers === "object" &&
-        "tlaplus" in mcpServers,
-      `Expected a TLA+ MCP server in ${file}`
-    );
-    const server: unknown = mcpServers.tlaplus;
-    assert.ok(
-      server !== null &&
-        typeof server === "object" &&
-        "command" in server &&
-        "args" in server,
-      `Expected an MCP command and arguments in ${file}`
-    );
-    assert.equal(server.command, "npx", file);
-    assert.deepEqual(server.args, ["-y", packageName], file);
-  })
-);
-console.log("Editor MCP manifests launch the untagged npm package");
 
 const directory = await mkdtemp(path.join(tmpdir(), "tlaplus-consumer-"));
 const consumer = path.join(directory, "consumer project");

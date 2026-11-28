@@ -7,11 +7,5 @@
   },
   "license": "MIT",
   "displayName": "TLA+",
-  "mcpServers": {
-    "tlaplus": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@tlaplus-mcp/tlaplus-mcp"]
-    }
-  }
+  "mcpServers": "./mcp.json"
 }

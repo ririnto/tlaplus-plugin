@@ -22,6 +22,7 @@
     "build": "node scripts/build.ts",
     "check": "run-p check:*",
     "check:markdownlint-cli2": "markdownlint-cli2",
+    "check:plugin": "node --test tests/plugin-launch.test.ts",
     "check:test": "npm run test:consumer --",
     "check:test-release": "node --test tests/npm-release.test.ts",
     "check:typescript": "tsc",
@@ -34,7 +35,7 @@
     "prepare": "husky",
     "test:viewer": "node --test tests/behavior-viewer.test.ts",
     "test": "npm run check:typescript && npm run test:consumer --",
-    "test:consumer": "node tests/consumer-package.ts",
+    "test:consumer": "npm run check:plugin && node tests/consumer-package.ts",
     "test:workflows": "node --test tests/workflow-inputs.test.ts"
   },
   "devDependencies": {

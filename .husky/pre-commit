@@ -1,1 +1,5 @@
-pnpm exec run-p 'check:!(test)'
+if [ -n "$(command -v run-p)" ]; then
+  run-p 'check:!(test)'
+else
+  pnpm exec run-p 'check:!(test)'
+fi
