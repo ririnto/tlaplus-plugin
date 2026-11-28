@@ -123,6 +123,8 @@ Packing, the consumer test, and release staging use the npm CLI.
 `npm pack` builds the main package.
 `npm pack ./npm` builds the platform package from the `npm/` directory that the build creates.
 `npm test` packs both tarballs, installs them in a temporary project with Java removed from the consumer's `PATH`, and checks the shipped stdio entry point with Kotest.
+The consumer script explicitly selects `InstalledPackageIT` with Maven Surefire.
+The regular Kotlin contract tests under `src/test/kotlin/` do not replace the installed-package check.
 
 The build fetches the default branches of AgentSkills and vscode-tlaplus.
 It downloads the TLA+ tools JAR from the official `v1.7.4` GitHub release and installs it as a local Maven dependency.
